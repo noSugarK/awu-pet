@@ -233,7 +233,7 @@ fn open_trash() {
 
 // ---------- errands from the Explorer right-click menu ----------
 
-/// "请X帮你删除文件": who should go, which files, and where the file is on the page (CSS px).
+/// "请X删除": who should go, which files, and where the file is on the page (CSS px).
 #[derive(Serialize, Clone)]
 struct Errand {
     who: String,
@@ -330,45 +330,52 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menus> {
     };
 
     let actions = sub("动作", &ACTIONS.iter().map(|(id, t)| item(&format!("act:{id}"), t)).collect::<Result<Vec<_>, _>>()?)?;
-    let show = sub("显示", &[item("show:both", "一二和布布")?, item("show:yier", "只有一二")?, item("show:bubu", "只有布布")?])?;
-    let size = sub("大小", &[item("size:130", "小")?, item("size:180", "中")?, item("size:240", "大")?])?;
-    let glasses = check("outfit:glasses", "🕶️ 墨镜", false)?;
-    let scarf = check("outfit:scarf", "🧣 围巾", false)?;
-    let outfits = Submenu::with_items(app, "搭配", true, &[&glasses, &scarf])?;
-    let autoplay = check("autoplay", "没人理时自己玩", true)?;
-    let autostart = check("autostart", "开机自启", app.autolaunch().is_enabled().unwrap_or(false))?;
-    let explorer_menu = check("explorer_menu", "资源管理器右键菜单「请一二/布布帮你删除文件」", true)?;
-    let toggle = item("toggle", "隐藏到托盘")?;
     let sep = || PredefinedMenuItem::separator(app);
 
-    let menu = Menu::with_items(
+    // 外观: who is shown, size, outfits
+    let (glasses, scarf) = (check("outfit:glasses", "墨镜", false)?, check("outfit:scarf", "围巾", false)?);
+    let look = Submenu::with_items(
         app,
+        "外观",
+        true,
         &[
-            &actions,
-            &show,
-            &size,
-            &outfits,
-            &autoplay,
-            &autostart,
-            &explorer_menu,
+            &item("show:both", "一二和布布")?,
+            &item("show:yier", "只有一二")?,
+            &item("show:bubu", "只有布布")?,
             &sep()?,
-            &item("undo", "吐出来（撤销上一次投喂）")?,
-            &item("open_trash", "打开回收站")?,
-            &item("empty_trash", "清空回收站…")?,
+            &item("size:130", "小")?,
+            &item("size:180", "中")?,
+            &item("size:240", "大")?,
             &sep()?,
-            &toggle,
-            &item("about", "关于")?,
-            &item("quit", "退出")?,
+            &glasses,
+            &scarf,
         ],
     )?;
-    let checks = HashMap::from([("outfit:glasses", glasses), ("outfit:scarf", scarf), ("autoplay", autoplay), ("autostart", autostart), ("explorer_menu", explorer_menu)]);
+    let bin = sub("回收站", &[item("undo", "吐出来")?, item("open_trash", "打开")?, item("empty_trash", "清空…")?])?;
+    // 设置
+    let on_top = check("on_top", "置顶", true)?;
+    let autoplay = check("autoplay", "自己玩", true)?;
+    let autostart = check("autostart", "开机自启", app.autolaunch().is_enabled().unwrap_or(false))?;
+    let explorer_menu = check("explorer_menu", "文件右键菜单", true)?;
+    let settings = Submenu::with_items(app, "设置", true, &[&on_top, &autoplay, &autostart, &explorer_menu, &sep()?, &item("about", "关于")?])?;
+    let toggle = item("toggle", "隐藏")?;
+
+    let menu = Menu::with_items(app, &[&actions, &look, &bin, &settings, &sep()?, &toggle, &item("quit", "退出")?])?;
+    let checks = HashMap::from([
+        ("outfit:glasses", glasses),
+        ("outfit:scarf", scarf),
+        ("on_top", on_top),
+        ("autoplay", autoplay),
+        ("autostart", autostart),
+        ("explorer_menu", explorer_menu),
+    ]);
     Ok(Menus { menu, checks, toggle })
 }
 
 fn set_visible(app: &AppHandle, show: bool) {
     let (Some(win), menus) = (app.get_webview_window("main"), app.state::<Menus>()) else { return };
     let _ = if show { win.show() } else { win.hide() };
-    let _ = menus.toggle.set_text(if show { "隐藏到托盘" } else { "显示桌宠" });
+    let _ = menus.toggle.set_text(if show { "隐藏" } else { "显示" });
 }
 
 fn toggle_window(app: &AppHandle) {
@@ -425,15 +432,18 @@ struct Settings {
     glasses: bool,
     scarf: bool,
     autoplay: bool,
+    on_top: bool,
     explorer_menu: bool,
 }
 
 /// The page owns the saved settings; it reports them on load so the check marks match.
 #[tauri::command]
-fn sync_menu(settings: Settings, menus: State<Menus>) {
+fn sync_menu(settings: Settings, menus: State<Menus>, win: WebviewWindow) {
+    let _ = win.set_always_on_top(settings.on_top);
     for (id, on) in [
         ("outfit:glasses", settings.glasses),
         ("outfit:scarf", settings.scarf),
+        ("on_top", settings.on_top),
         ("autoplay", settings.autoplay),
         ("explorer_menu", settings.explorer_menu),
     ] {
@@ -476,7 +486,7 @@ fn main() {
             win.set_ignore_cursor_events(true)?;
             TrayIconBuilder::with_id("tray")
                 .icon(app.default_window_icon().cloned().expect("app icon"))
-                .tooltip("YierBubu-Pet · Designed by 黄小B · Powered by noSugarK")
+                .tooltip("YierBubu-Pet")
                 .menu(&app.state::<Menus>().menu)
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(|tray, event| {

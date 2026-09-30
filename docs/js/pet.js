@@ -305,7 +305,7 @@ function eat(b, n, from, msg = `吃掉了 ${n} 个，嗝～\n在回收站可以�
   }, 1600);
 }
 
-// "请一二/布布帮你删除文件": ❗, dash to the file, stop beside it with the huge mouth open.
+// "请一二/布布删除": ❗, dash to the file, stop beside it with the huge mouth open.
 // Resolves once they are in place, with a function that sends them back where they came from.
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function errand(list, target) {

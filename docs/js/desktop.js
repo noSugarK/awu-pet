@@ -7,7 +7,7 @@ const { invoke } = T.core;
 const { listen } = T.event;
 
 // --- settings, kept in the webview's localStorage ---
-const DEFAULTS = { show: ['yier', 'bubu'], size: 180, glasses: false, scarf: false, autoplay: true, explorerMenu: true };
+const DEFAULTS = { show: ['yier', 'bubu'], size: 180, glasses: false, scarf: false, autoplay: true, onTop: true, explorerMenu: true };
 let settings = DEFAULTS;
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') }; } catch {}
 const save = () => { try { localStorage.setItem('settings', JSON.stringify(settings)); } catch {} };
@@ -59,6 +59,7 @@ listen('menu', ({ payload: [id, checked] }) => {
   else if (kind === 'outfit') settings[arg] = checked;
   else if (id === 'autoplay') settings.autoplay = checked;
   else if (id === 'explorer_menu') settings.explorerMenu = checked;
+  else if (id === 'on_top') settings.onTop = checked;
   else if (id === 'about') return sayAny('YierBubu-Pet · 一二布布桌宠\nDesigned by 黄小B\nPowered by noSugarK');
   else return;
   save();
@@ -100,7 +101,7 @@ T.webview.getCurrentWebview().onDragDropEvent(async ({ payload: p }) => {
     PET.say(b, '呜…没吃下去\n' + err);
   }
 });
-// --- errands from Explorer's right-click menu: "请一二/布布/一二和布布帮你删除文件" ---
+// --- errands from Explorer's right-click menu: "请一二删除 / 请布布删除 / 请一二布布删除" ---
 listen('errand', async ({ payload: { who, paths, target } }) => {
   const visible = PET.bears.filter(b => !b.hidden);
   let list = visible.filter(b => who === 'both' || b.id === who);

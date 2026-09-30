@@ -1,12 +1,12 @@
-//! Windows Explorer integration: the "请一二帮你删除文件" right-click entries (per-user registry, no admin)
+//! Windows Explorer integration: the "请一二删除" right-click entries (per-user registry, no admin)
 //! and finding where the chosen file sits on screen so the bears can run to it.
 use std::path::Path;
 
 /// (registry key, menu text, who) — which ones are registered follows the pet's 显示 setting.
 pub const VERBS: [(&str, &str, &str); 3] = [
-    ("YierBubu-Pet.yier", "请一二帮你删除文件", "yier"),
-    ("YierBubu-Pet.bubu", "请布布帮你删除文件", "bubu"),
-    ("YierBubu-Pet.both", "请一二和布布帮你删除文件", "both"),
+    ("YierBubu-Pet.yier", "请一二删除", "yier"),
+    ("YierBubu-Pet.bubu", "请布布删除", "bubu"),
+    ("YierBubu-Pet.both", "请一二布布删除", "both"),
 ];
 /// Keys written by builds from before the rename; removed so no stale entries remain.
 const OLD_KEYS: [&str; 3] = ["YierBubu.yier", "YierBubu.bubu", "YierBubu.both"];
