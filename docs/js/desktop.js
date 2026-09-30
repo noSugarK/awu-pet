@@ -59,7 +59,7 @@ listen('menu', ({ payload: [id, checked] }) => {
   else if (kind === 'outfit') settings[arg] = checked;
   else if (id === 'autoplay') settings.autoplay = checked;
   else if (id === 'explorer_menu') settings.explorerMenu = checked;
-  else if (id === 'about') return sayAny('一二 & 布布 桌宠\nDesigned by 黄小B\nPowered by noSugarK');
+  else if (id === 'about') return sayAny('YierBubu-Pet · 一二布布桌宠\nDesigned by 黄小B\nPowered by noSugarK');
   else return;
   save();
   apply();

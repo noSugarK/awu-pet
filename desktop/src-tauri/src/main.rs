@@ -1,4 +1,4 @@
-// 一二 & 布布 desktop pet · Designed by 黄小B · Powered by noSugarK
+// YierBubu-Pet (一二布布桌宠) · Designed by 黄小B · Powered by noSugarK
 //
 // One transparent, always-on-top window covers the work area; the bears are drawn by the shared
 // web engine in docs/. Rust makes the window click-through except over the bears, feeds the page the
@@ -476,7 +476,7 @@ fn main() {
             win.set_ignore_cursor_events(true)?;
             TrayIconBuilder::with_id("tray")
                 .icon(app.default_window_icon().cloned().expect("app icon"))
-                .tooltip("一二 & 布布 · Designed by 黄小B · Powered by noSugarK")
+                .tooltip("YierBubu-Pet · Designed by 黄小B · Powered by noSugarK")
                 .menu(&app.state::<Menus>().menu)
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(|tray, event| {

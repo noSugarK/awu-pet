@@ -4,19 +4,24 @@ use std::path::Path;
 
 /// (registry key, menu text, who) — which ones are registered follows the pet's 显示 setting.
 pub const VERBS: [(&str, &str, &str); 3] = [
-    ("YierBubu.yier", "请一二帮你删除文件", "yier"),
-    ("YierBubu.bubu", "请布布帮你删除文件", "bubu"),
-    ("YierBubu.both", "请一二和布布帮你删除文件", "both"),
+    ("YierBubu-Pet.yier", "请一二帮你删除文件", "yier"),
+    ("YierBubu-Pet.bubu", "请布布帮你删除文件", "bubu"),
+    ("YierBubu-Pet.both", "请一二和布布帮你删除文件", "both"),
 ];
+/// Keys written by builds from before the rename; removed so no stale entries remain.
+const OLD_KEYS: [&str; 3] = ["YierBubu.yier", "YierBubu.bubu", "YierBubu.both"];
 
 /// Registers the entries for `who` on files and folders, removing the others.
-/// Explorer then runs `yierbubu.exe --eat <who> "<path>"` (once per selected item).
+/// Explorer then runs `YierBubu-Pet.exe --eat <who> "<path>"` (once per selected item).
 #[cfg(windows)]
 pub fn set_menu(who: &[&str]) -> std::io::Result<()> {
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let exe = std::env::current_exe()?.display().to_string();
     for base in [r"Software\Classes\*\shell", r"Software\Classes\Directory\shell"] {
+        for key in OLD_KEYS {
+            let _ = hkcu.delete_subkey_all(format!(r"{base}\{key}"));
+        }
         for (key, text, id) in VERBS {
             let path = format!(r"{base}\{key}");
             let _ = hkcu.delete_subkey_all(&path);
@@ -31,7 +36,21 @@ pub fn set_menu(who: &[&str]) -> std::io::Result<()> {
             cmd.set_value("", &format!("\"{exe}\" --eat {id} \"%1\""))?;
         }
     }
+    notify_shell();
     Ok(())
+}
+
+/// Explorer caches context-menu verbs; tell it associations changed so new entries show up right away.
+#[cfg(windows)]
+fn notify_shell() {
+    #[link(name = "shell32")]
+    extern "system" {
+        fn SHChangeNotify(event: i32, flags: u32, item1: *const std::ffi::c_void, item2: *const std::ffi::c_void);
+    }
+    const SHCNE_ASSOCCHANGED: i32 = 0x0800_0000;
+    const SHCNF_IDLIST: u32 = 0;
+    // SAFETY: documented usage; SHCNE_ASSOCCHANGED takes no items.
+    unsafe { SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, std::ptr::null(), std::ptr::null()) };
 }
 
 #[cfg(not(windows))]
