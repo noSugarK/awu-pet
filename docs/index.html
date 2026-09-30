@@ -39,17 +39,15 @@ footer { position: fixed; bottom: 16px; left: 0; right: 0; padding: 0 16px; disp
 <p class="hint">👀 移动鼠标 · 👆 点击 · 😤 连点 · ✋ 拖着跑 · 💞 拖到一起 · 🏃 双击空白处 · 🍜🧋🌹 下方按钮 · 🧸 不理它们会自己玩 · 😴 走开一会儿会睡着</p>
 <p class="credit">Designed by 黄小B · Powered by noSugarK · 形象版权归原作者所有，本站为非商业粉丝作品</p></footer>
 
+<script src="js/core/yb.js"></script>
+<script src="js/characters/yier.js"></script>
+<script src="js/characters/bubu.js"></script>
+<script src="js/core/render.js"></script>
+<script src="js/core/runtime.js"></script>
+<script src="js/behaviors/feeding.js"></script>
+<script src="js/behaviors/actions.js"></script>
+<script src="js/behaviors/brain.js"></script>
 <script src="js/pet.js"></script>
-<script>
-for (const id of ['think', 'dance', 'shy', 'sleep', 'noodle', 'boba', 'rose']) document.getElementById(id).onclick = () => PET.run(id);
-for (const id of ['glasses', 'scarf']) {
-  const btn = document.getElementById(id);
-  btn.onclick = () => {
-    const on = btn.getAttribute('aria-pressed') !== 'true';
-    btn.setAttribute('aria-pressed', on);
-    PET.outfit(id, on);
-  };
-}
-</script>
+<script src="js/platform/web.js"></script>
 </body>
 </html>
