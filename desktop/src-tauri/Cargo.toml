@@ -12,6 +12,11 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 trash = "5"
 user-idle = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+uiautomation = "0.25"
+winreg = "0.56"

@@ -7,7 +7,7 @@ const { invoke } = T.core;
 const { listen } = T.event;
 
 // --- settings, kept in the webview's localStorage ---
-const DEFAULTS = { show: ['yier', 'bubu'], size: 180, glasses: false, scarf: false, autoplay: true };
+const DEFAULTS = { show: ['yier', 'bubu'], size: 180, glasses: false, scarf: false, autoplay: true, explorerMenu: true };
 let settings = DEFAULTS;
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') }; } catch {}
 const save = () => { try { localStorage.setItem('settings', JSON.stringify(settings)); } catch {} };
@@ -39,7 +39,8 @@ setInterval(() => {
   if (key !== sent) { sent = key; invoke('set_hit_rects', { rects }); }
 }, 50);
 
-listen('cursor', e => PET.lookAt(e.payload[0], e.payload[1]));
+let cursor = { x: innerWidth / 2, y: innerHeight / 2 };
+listen('cursor', e => { cursor = { x: e.payload[0], y: e.payload[1] }; PET.lookAt(cursor.x, cursor.y); });
 listen('idle', e => PET.setIdle(e.payload));
 
 // --- right click on a bear: native context menu (same as the tray menu) ---
@@ -57,6 +58,7 @@ listen('menu', ({ payload: [id, checked] }) => {
   else if (kind === 'size') settings.size = +arg;
   else if (kind === 'outfit') settings[arg] = checked;
   else if (id === 'autoplay') settings.autoplay = checked;
+  else if (id === 'explorer_menu') settings.explorerMenu = checked;
   else if (id === 'about') return sayAny('一二 & 布布 桌宠\nDesigned by 黄小B\nPowered by noSugarK');
   else return;
   save();
@@ -98,4 +100,31 @@ T.webview.getCurrentWebview().onDragDropEvent(async ({ payload: p }) => {
     PET.say(b, '呜…没吃下去\n' + err);
   }
 });
+// --- errands from Explorer's right-click menu: "请一二/布布/一二和布布帮你删除文件" ---
+listen('errand', async ({ payload: { who, paths, target } }) => {
+  const visible = PET.bears.filter(b => !b.hidden);
+  let list = visible.filter(b => who === 'both' || b.id === who);
+  if (!list.length) list = visible.slice(0, 1);
+  if (!list.length) return;
+  const meal = await invoke('check_meal', { paths });
+  if (!meal.allowed.length) return PET.say(list[0], '这个不能吃…\n（系统文件或找不到）');
+  const spot = target ? { x: target[0], y: target[1] } : cursor;
+  const goHome = await PET.errand(list, spot);
+  if (meal.needsConfirm && await PET.say(list[0], `要吃掉 ${meal.allowed.length} 个吗？\n会放进回收站`, { choices: ['吃！', '不吃'] }) !== 0) {
+    PET.hungry(null);
+    return goHome();
+  }
+  try {
+    const n = await invoke('eat_files', { paths: meal.allowed });
+    const duo = list.length > 1;
+    list.forEach((b, i) => PET.eat(b, n, spot, i ? '' : duo ? `一起吃掉了 ${n} 个！\n在回收站可以找回` : undefined));
+    if (meal.blocked.length) setTimeout(() => PET.say(list[0], `有 ${meal.blocked.length} 个不能吃，吐掉了`), 4500);
+  } catch (err) {
+    PET.hungry(null);
+    PET.say(list[0], '呜…没吃下去\n' + err);
+  }
+  goHome();
+});
+
+invoke('pet_ready');
 })();

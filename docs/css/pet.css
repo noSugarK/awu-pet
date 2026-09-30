@@ -114,6 +114,9 @@
 .s-eat .eyes-happy { display: inline; }
 .s-eat .m-open { display: inline; transform-box: fill-box; transform-origin: center; animation: chomp .16s ease-in-out infinite alternate; }
 .s-eat .arm { transform: rotate(-48deg); }
+/* dashing to a file on an errand: faster steps */
+.dash.running .inner { animation-duration: .1s; }
+.dash.running .leg-l, .dash.running .leg-r, .dash.running .arm-l, .dash.running .arm-r { animation-duration: .2s; }
 
 /* speech bubble above a bear; may carry choice buttons */
 .bubble { position: absolute; left: 50%; bottom: 92%; transform: translateX(-50%); z-index: 30; min-width: 120px; max-width: 220px;

@@ -286,7 +286,8 @@ function hungry(b) {
     else if (x.state === 'hungry') setState(x, baseState());
   });
 }
-function eat(b, n, from) {
+// msg: bubble text after chewing; '' for none (the partner does the talking)
+function eat(b, n, from, msg = `吃掉了 ${n} 个，嗝～\n在回收站可以找回`) {
   interact();
   const c = center(b);
   if (from) for (let i = 0; i < Math.min(n, 6); i++) {
@@ -300,8 +301,39 @@ function eat(b, n, from) {
   setState(b, 'eat', 1600);
   setTimeout(() => {
     burst(c.x, c.y - 30, ['✨'], '#f5b400', 3, .8);
-    say(b, `吃掉了 ${n} 个，嗝～\n在回收站可以找回`);
+    if (msg) say(b, msg);
   }, 1600);
+}
+
+// "请一二/布布帮你删除文件": ❗, dash to the file, stop beside it with the huge mouth open.
+// Resolves once they are in place, with a function that sends them back where they came from.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function errand(list, target) {
+  interact();
+  wake(true);
+  const home = list.map(b => [b, b.x, b.y]);
+  list.sort((a, b) => a.x - b.x);
+  for (const b of list) {
+    b.el.querySelector('.bubble')?.dispatchEvent(new Event('dismiss'));
+    setState(b, 'surprised');
+    jump(b);
+    const c = center(b);
+    burst(c.x + 30, c.y - 70, ['❗'], '#e0473f', 1, .1);
+  }
+  say(list[0], list.length > 1 ? '收到！一起上！' : '收到！', { ms: 1200 });
+  await sleep(700);
+  // one bear: stand on the side it comes from; two: one on each side of the file
+  const sides = list.length > 1 ? [-1, 1] : [center(list[0]).x < target.x ? -1 : 1];
+  await Promise.all(list.map((b, i) => {
+    const r = rect(b);
+    setState(b, 'happy');
+    b.el.classList.add('dash');
+    return moveTo(b, target.x - r.width / 2 + sides[i] * r.width * .6, target.y - r.height * .55, 620)
+      .then(() => b.el.classList.remove('dash'));
+  }));
+  list.forEach(b => setState(b, 'hungry'));
+  await sleep(650);
+  return () => setTimeout(() => home.forEach(([b, x, y]) => moveTo(b, x, y, 200)), 2800);
 }
 
 // --- dragging: the bear runs after the pointer instead of snapping to it ---
@@ -439,7 +471,7 @@ function loop(now) {
     }
     const running = now < b.runUntil;
     b.el.classList.toggle('running', running);
-    if (running && now - b.lastPuff > 140) { b.lastPuff = now; puff(b); }
+    if (running && now - b.lastPuff > (b.el.classList.contains('dash') ? 60 : 140)) { b.lastPuff = now; puff(b); }
     if (b.state === 'noodle' && now - b.lastFx > 500) {
       b.lastFx = now;
       const r = rect(b);
@@ -483,5 +515,5 @@ addEventListener('resize', () => {
 bears.forEach(b => setState(b, 'normal'));
 requestAnimationFrame(() => { layout(); requestAnimationFrame(loop); });
 
-return { config, bears, actions, run, outfit, show, setSize, say, lookAt, setIdle, bearAt, hungry, eat, rect, interact, dragging: () => !!drag };
+return { config, bears, actions, run, outfit, show, setSize, say, lookAt, setIdle, bearAt, hungry, eat, errand, rect, interact, dragging: () => !!drag };
 })();

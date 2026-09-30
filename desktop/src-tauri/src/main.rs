@@ -5,12 +5,17 @@
 // global cursor + OS idle time, owns the tray / right-click menu, and moves eaten files to the OS trash.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod explorer;
+
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     io::Write,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    },
     thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -226,6 +231,83 @@ fn open_trash() {
     let _ = std::process::Command::new("xdg-open").arg("trash:///").spawn();
 }
 
+// ---------- errands from the Explorer right-click menu ----------
+
+/// "请X帮你删除文件": who should go, which files, and where the file is on the page (CSS px).
+#[derive(Serialize, Clone)]
+struct Errand {
+    who: String,
+    paths: Vec<PathBuf>,
+    target: Option<(f64, f64)>,
+}
+
+#[derive(Default)]
+struct Errands {
+    pending: Mutex<Vec<(String, PathBuf)>>,
+    queued: Mutex<Vec<Errand>>, // errands that arrived before the page finished loading
+    ready: AtomicBool,
+}
+
+/// Screen point (physical px) → page coordinates of the overlay window.
+fn to_page(win: &WebviewWindow, x: f64, y: f64) -> Option<(f64, f64)> {
+    let (pos, scale) = (win.inner_position().ok()?, win.scale_factor().ok()?);
+    Some(((x - pos.x as f64) / scale, (y - pos.y as f64) / scale))
+}
+
+/// Handles `--eat <yier|bubu|both> <path>...`, from a fresh launch or forwarded by a second instance.
+/// Explorer starts one process per selected item, so requests are gathered for a moment into one errand.
+fn handle_args(app: &AppHandle, args: &[String]) {
+    let Some(i) = args.iter().position(|a| a == "--eat") else { return };
+    let (Some(who), Some(paths)) = (args.get(i + 1), args.get(i + 2..)) else { return };
+    if paths.is_empty() {
+        return;
+    }
+    let errands = app.state::<Errands>();
+    let mut pending = errands.pending.lock().unwrap();
+    let first = pending.is_empty();
+    pending.extend(paths.iter().map(|p| (who.clone(), PathBuf::from(p))));
+    if !first {
+        return;
+    }
+    let (app, probe) = (app.clone(), PathBuf::from(&paths[0]));
+    thread::spawn(move || {
+        // look now, while Explorer still has the file focused; fall back to where the cursor is
+        let screen = explorer::focused_item(&probe)
+            .map(|(l, t, r, b)| ((l + r) as f64 / 2.0, (t + b) as f64 / 2.0))
+            .or_else(|| app.cursor_position().ok().map(|c| (c.x, c.y)));
+        let Some(win) = app.get_webview_window("main") else { return };
+        let target = screen.and_then(|(x, y)| to_page(&win, x, y));
+        thread::sleep(Duration::from_millis(400));
+        let mut groups: Vec<Errand> = Vec::new();
+        for (who, path) in std::mem::take(&mut *app.state::<Errands>().pending.lock().unwrap()) {
+            match groups.iter_mut().find(|g| g.who == who) {
+                Some(g) => g.paths.push(path),
+                None => groups.push(Errand { who, paths: vec![path], target }),
+            }
+        }
+        set_visible(&app, true);
+        let errands = app.state::<Errands>();
+        let mut queued = errands.queued.lock().unwrap();
+        if errands.ready.load(Ordering::SeqCst) {
+            for g in groups {
+                let _ = app.emit("errand", g);
+            }
+        } else {
+            queued.extend(groups);
+        }
+    });
+}
+
+/// Called by the page once the bears exist; delivers errands that arrived during start-up.
+#[tauri::command]
+fn pet_ready(app: AppHandle, errands: State<Errands>) {
+    let mut queued = errands.queued.lock().unwrap();
+    errands.ready.store(true, Ordering::SeqCst);
+    for g in queued.drain(..) {
+        let _ = app.emit("errand", g);
+    }
+}
+
 // ---------- menu (tray + right click on a bear) ----------
 
 const ACTIONS: [(&str, &str); 9] = [
@@ -255,6 +337,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menus> {
     let outfits = Submenu::with_items(app, "搭配", true, &[&glasses, &scarf])?;
     let autoplay = check("autoplay", "没人理时自己玩", true)?;
     let autostart = check("autostart", "开机自启", app.autolaunch().is_enabled().unwrap_or(false))?;
+    let explorer_menu = check("explorer_menu", "资源管理器右键菜单「请一二/布布帮你删除文件」", true)?;
     let toggle = item("toggle", "隐藏到托盘")?;
     let sep = || PredefinedMenuItem::separator(app);
 
@@ -267,6 +350,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menus> {
             &outfits,
             &autoplay,
             &autostart,
+            &explorer_menu,
             &sep()?,
             &item("undo", "吐出来（撤销上一次投喂）")?,
             &item("open_trash", "打开回收站")?,
@@ -277,15 +361,19 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menus> {
             &item("quit", "退出")?,
         ],
     )?;
-    let checks = HashMap::from([("outfit:glasses", glasses), ("outfit:scarf", scarf), ("autoplay", autoplay), ("autostart", autostart)]);
+    let checks = HashMap::from([("outfit:glasses", glasses), ("outfit:scarf", scarf), ("autoplay", autoplay), ("autostart", autostart), ("explorer_menu", explorer_menu)]);
     Ok(Menus { menu, checks, toggle })
 }
 
-fn toggle_window(app: &AppHandle) {
+fn set_visible(app: &AppHandle, show: bool) {
     let (Some(win), menus) = (app.get_webview_window("main"), app.state::<Menus>()) else { return };
-    let visible = win.is_visible().unwrap_or(true);
-    let _ = if visible { win.hide() } else { win.show() };
-    let _ = menus.toggle.set_text(if visible { "显示桌宠" } else { "隐藏到托盘" });
+    let _ = if show { win.show() } else { win.hide() };
+    let _ = menus.toggle.set_text(if show { "隐藏到托盘" } else { "显示桌宠" });
+}
+
+fn toggle_window(app: &AppHandle) {
+    let visible = app.get_webview_window("main").and_then(|w| w.is_visible().ok()).unwrap_or(true);
+    set_visible(app, !visible);
 }
 
 fn on_menu(app: &AppHandle, event: MenuEvent) {
@@ -331,17 +419,34 @@ fn on_menu(app: &AppHandle, event: MenuEvent) {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Settings {
+    show: Vec<String>,
     glasses: bool,
     scarf: bool,
     autoplay: bool,
+    explorer_menu: bool,
 }
 
 /// The page owns the saved settings; it reports them on load so the check marks match.
 #[tauri::command]
 fn sync_menu(settings: Settings, menus: State<Menus>) {
-    for (id, on) in [("outfit:glasses", settings.glasses), ("outfit:scarf", settings.scarf), ("autoplay", settings.autoplay)] {
+    for (id, on) in [
+        ("outfit:glasses", settings.glasses),
+        ("outfit:scarf", settings.scarf),
+        ("autoplay", settings.autoplay),
+        ("explorer_menu", settings.explorer_menu),
+    ] {
         let _ = menus.checks[id].set_checked(on);
+    }
+    // Explorer entries follow who is shown: both → all three, one → just that one
+    let who: Vec<&str> = match (settings.explorer_menu, settings.show.len()) {
+        (false, _) => vec![],
+        (true, 2) => vec!["yier", "bubu", "both"],
+        _ => settings.show.iter().map(String::as_str).collect(),
+    };
+    if let Err(e) = explorer::set_menu(&who) {
+        eprintln!("could not update the Explorer menu: {e}");
     }
 }
 
@@ -352,10 +457,12 @@ fn show_menu(win: WebviewWindow, menus: State<Menus>) {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| handle_args(app, &argv)))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .manage(Shared::default())
+        .manage(Errands::default())
         .on_menu_event(on_menu)
-        .invoke_handler(tauri::generate_handler![set_hit_rects, check_meal, eat_files, empty_trash, sync_menu, show_menu])
+        .invoke_handler(tauri::generate_handler![set_hit_rects, check_meal, eat_files, empty_trash, sync_menu, show_menu, pet_ready])
         .setup(|app| {
             let handle = app.handle().clone();
             app.manage(build_menu(&handle)?);
@@ -378,7 +485,8 @@ fn main() {
                     }
                 })
                 .build(app)?;
-            watch_cursor(handle, win);
+            watch_cursor(handle.clone(), win);
+            handle_args(&handle, &std::env::args().collect::<Vec<_>>());
             Ok(())
         })
         .run(tauri::generate_context!())
