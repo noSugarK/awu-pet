@@ -6,10 +6,11 @@
 
 YierBubu-Pet 是一款以一二和布布为主角的桌面宠物。它们站在你的任务栏上，眼睛跟着鼠标转，没人理时自己散步、吃面、喝奶茶、跳舞、抱抱，你离开电脑就趴下睡觉。它们还是会吃文件的回收站：把文件拖到熊身上，或者在资源管理器里右键「请一二帮你删除文件」，它们就会跑过去张开大嘴吃掉——文件进系统回收站，随时可以找回。
 
-用鼠标和一二、布布互动的网页，以及（开发中的）Rust 桌宠。
 
+
+- **下载桌宠**：[GitHub Releases](https://github.com/noSugarK/yierbubu-pet/releases)（Windows / macOS / Linux）
 - **互动网页**：[`docs/index.html`](docs/index.html)，直接用浏览器打开即可；部署在 GitHub Pages。
-- **桌宠软件**：`desktop/`（Rust + Tauri v2，规划中）。可切换形象，没人理的时候自己玩，还能把文件拖给它"吃掉"（移到系统回收站，可找回）。
+- **桌宠软件**：`desktop/`（Rust + Tauri v2）。可切换形象，没人理的时候自己玩，还能把文件拖给它"吃掉"（移到系统回收站，可找回）。
 - **设计文档**：[`DESIGN.md`](DESIGN.md)，包括角色规格、动作 / 道具调研、网站部署、桌宠架构和里程碑。
 
 ## 网页里能做什么
@@ -25,3 +26,7 @@ Settings → Pages → Deploy from a branch → `main` / `/docs`。
 代码以 [MIT](LICENSE) 许可发布。
 
 一二、布布形象版权归原作者黄小B所有。本项目为非商业粉丝作品，未经授权不得用于商业用途；如权利人提出要求，将立即下架相关内容。
+
+## 发布新版本
+
+改好 `desktop/src-tauri/tauri.conf.json` 里的 `version` 后，推送同名 tag（如 `v0.1.0`），GitHub Actions 会自动打包三个平台并发布到 Releases。

@@ -1,0 +1,71 @@
+# Builds YierBubu-Pet for Windows / macOS / Linux and publishes the installers to GitHub Releases.
+# Trigger: push a tag like v0.1.0 (the tag must match "version" in desktop/src-tauri/tauri.conf.json).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libx11-dev libxss-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri -> target
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          tauriScript: npx --yes @tauri-apps/cli@^2
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_name }}
+          releaseName: YierBubu-Pet ${{ github.ref_name }}
+          releaseDraft: false
+          prerelease: false
+          releaseBody: |
+            **YierBubu-Pet · 一二布布桌宠** —— 一二和布布住进你的桌面：会陪你玩，还会帮你“吃掉”文件。
+
+            - 站在任务栏上，眼睛跟着鼠标，没人理时自己散步、吃面、跳舞、抱抱，离开电脑就趴下睡觉
+            - 把文件 / 文件夹拖到熊身上：张开大嘴吃掉（移进系统回收站，可以找回）
+            - Windows 资源管理器右键「请一二 / 布布 / 一二和布布帮你删除文件」（Win11 在「显示更多选项」里）
+            - 右键熊或托盘图标：动作、显示、大小、搭配、开机自启、吐出来、清空回收站、隐藏到托盘
+
+            **下载**：Windows 选 `*-setup.exe`（或 `.msi`），macOS 选 `.dmg`，Linux 选 `.AppImage` / `.deb`。
+
+            安装包暂未签名：Windows 若出现 SmartScreen 提示，点「更多信息 → 仍要运行」；macOS 若提示"已损坏"，在终端执行 `xattr -cr /Applications/YierBubu-Pet.app`。
+
+            Designed by 黄小B · Powered by noSugarK
+            一二、布布形象版权归原作者黄小B所有，本软件为非商业粉丝作品。
