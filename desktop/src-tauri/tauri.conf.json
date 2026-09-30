@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "YierBubu",
+  "version": "0.1.0",
+  "identifier": "com.nosugark.yierbubu",
+  "build": {
+    "frontendDist": "../../docs"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "一二 & 布布",
+        "url": "pet.html",
+        "width": 800,
+        "height": 600,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "resizable": false,
+        "focus": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "Designed by 黄小B · Powered by noSugarK",
+    "category": "Entertainment",
+    "shortDescription": "一二 & 布布 桌宠",
+    "longDescription": "一二和布布住在你的任务栏上：会自己玩、会睡觉，把文件拖给它们就会被吃进回收站。Designed by 黄小B · Powered by noSugarK。形象版权归原作者所有，本软件为非商业粉丝作品。"
+  }
+}

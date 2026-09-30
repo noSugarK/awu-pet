@@ -1,6 +1,6 @@
 # 一二 & 布布
 
-> 形象设计：**黄小B** · powered by **nosugark**
+> Designed by **黄小B** · Powered by **noSugarK**
 
 用鼠标和一二、布布互动的网页，以及（开发中的）Rust 桌宠。
 

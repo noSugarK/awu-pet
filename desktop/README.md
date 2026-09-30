@@ -1,0 +1,35 @@
+# 一二 & 布布 桌宠
+
+> Designed by **黄小B** · Powered by **noSugarK**
+
+Rust + Tauri v2。熊的画法和动作来自 `../docs/js/pet.js`（和网站同一份代码），Rust 负责透明置顶窗口、点击穿透、托盘 / 右键菜单和回收站。
+
+## 功能
+
+- 站在任务栏上，没人理时自己散步、吃面、喝奶茶、跳舞、抱抱；你离开电脑会趴下睡觉。
+- 眼睛跟着鼠标；点它、拖它、把两只拖到一起抱抱。
+- **把文件 / 文件夹拖到熊身上**：它张开大嘴等着，松手就吃掉（移进系统回收站，可以找回）。
+- **右键熊或托盘图标**：动作、显示哪只、大小、搭配、自己玩、开机自启、吐出来（撤销上一次投喂）、打开 / 清空回收站、隐藏到托盘、退出。
+- 托盘图标左键：隐藏 / 显示。
+
+## 开发
+
+需要 Rust stable 和 Tauri CLI：
+
+```bash
+cargo install tauri-cli --version "^2"
+```
+
+在 `desktop/src-tauri` 下运行：
+
+```bash
+cargo tauri dev
+```
+
+打包安装程序：
+
+```bash
+cargo tauri build
+```
+
+改熊的样子或动作：编辑 `docs/js/pet.js` / `docs/css/pet.css`，网站和桌宠同时生效。

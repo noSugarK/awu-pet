@@ -1,6 +1,6 @@
 # 一二 & 布布 · 项目设计文档
 
-> 形象设计：**黄小B** · powered by **nosugark**
+> Designed by **黄小B** · Powered by **noSugarK**
 >
 > 一二、布布形象版权归原作者黄小B所有。本仓库是非商业的粉丝作品，所有对外发布的界面、安装包、文档都必须带上上面这行署名（见 [§7 署名规范](#7-署名规范)）。
 
@@ -8,9 +8,9 @@
 
 | 部分 | 目录 | 技术 | 状态 |
 |---|---|---|---|
-| 互动网页 | `docs/` | 单文件 HTML + SVG + CSS 动画 + 原生 JS | ✅ 已完成第一版 |
+| 互动网页 | `docs/` | HTML + SVG + CSS 动画 + 原生 JS（渲染引擎 `docs/js/pet.js`） | ✅ 已完成 |
 | 网站部署 | `docs/` | GitHub Pages（main 分支 `/docs`） | ⏳ 需要推到 GitHub 后在设置里开启 |
-| 桌宠软件 | `desktop/` | Rust + Tauri v2，复用网页的渲染代码 | 📝 本文档设计，待实现 |
+| 桌宠软件 | `desktop/` | Rust + Tauri v2，复用网页的渲染代码 | 🚧 M2/M3 第一版已实现 |
 | 设计素材 | `design/` | 参考图、角色设定 | ✅ |
 
 ---
@@ -20,13 +20,18 @@
 ```text
 yier-bubu/
 ├─ docs/                    # GitHub Pages 站点根目录（网站 + 桌宠共用的渲染代码）
-│  ├─ index.html            # 互动网页（现在是单文件，M1 拆出 pet.js / pet.css）
+│  ├─ index.html            # 网站外壳：标题、按钮、页脚
+│  ├─ pet.html              # 桌宠外壳：透明背景，只有熊
+│  ├─ js/pet.js             # 共用渲染引擎：角色 SVG、状态机、移动、动作、自己玩、气泡、投喂动画
+│  ├─ js/desktop.js         # 桌宠桥接：和 Rust 通信（点击穿透、菜单、拖放投喂、设置）
+│  ├─ css/pet.css           # 共用角色 / 动作样式
 │  └─ .nojekyll             # 让 Pages 原样发布，不走 Jekyll
-├─ desktop/                 # Rust 桌宠（M2 起）
+├─ desktop/
 │  ├─ src-tauri/
-│  │  ├─ src/main.rs        # 窗口、托盘、文件投喂、系统信息
+│  │  ├─ src/main.rs        # 窗口、点击穿透、托盘 / 右键菜单、回收站、系统空闲
 │  │  ├─ Cargo.toml
-│  │  └─ tauri.conf.json    # frontendDist 指向 ../../docs
+│  │  ├─ tauri.conf.json    # frontendDist 指向 ../../docs，窗口加载 pet.html
+│  │  └─ icons/
 │  └─ README.md
 ├─ design/
 │  └─ reference/            # 角色参考图、动作图、精灵图
@@ -126,7 +131,7 @@ yier-bubu/
 | `index.html` | 现在的互动页（首页） |
 | `gallery.html` | 动作 / 搭配图鉴（§3.3） |
 | `download.html` | 桌宠下载：链接到 GitHub Releases 最新版，分 Windows / macOS / Linux |
-| 页脚（所有页面） | `形象设计：黄小B · powered by nosugark` + 版权说明 |
+| 页脚（所有页面） | `Designed by 黄小B · Powered by noSugarK` + 版权说明 |
 
 目前唯一的外部依赖是 Google Fonts 的站酷快乐体。离线或国内访问慢时会退回系统字体；要更稳可以把字体子集化后放进 `docs/fonts/`。
 
@@ -146,15 +151,18 @@ Rust 负责系统能力，网页负责画熊。
 
 ### 5.2 功能清单
 
-**(1) 透明置顶小窗口**
-- 每个角色一个无边框、透明、置顶、不显示在任务栏的小窗口（约 240×260）。熊"走路"就是移动窗口本身，窗口小，所以点击判定简单，透明区域也不会挡太多桌面。
-- 默认站在任务栏上沿（从 Rust 读显示器的工作区 `work_area`），多显示器下可以走到别的屏幕。
-- 配置：`transparent: true, decorations: false, alwaysOnTop: true, skipTaskbar: true, shadow: false, resizable: false`。
+**(1) 透明置顶窗口 + 点击穿透**
+- 一个无边框、透明、置顶、不进任务栏的窗口，铺满主显示器的工作区（`work_area`，即任务栏以上的区域）。两只熊都在这个窗口里，所以网页里的跑动、拥抱、跳舞、送花等双人互动全部原样可用。
+- 点击穿透：Rust 每 16 ms 读一次全局光标，只有光标在熊（或它的气泡）上时窗口才接收鼠标，其余时候鼠标直接穿过去操作桌面。拖动熊时临时接收整个窗口，防止拖太快时"脱手"。
+- 熊默认站在右下角任务栏上沿，自己散步也沿着底边走；可以拖到屏幕任何地方。
+- 窗口配置：`transparent, decorations: false, alwaysOnTop, skipTaskbar, shadow: false, resizable: false, focus: false`。
+- 眼睛跟着全局光标转（Rust 推送 `cursor` 事件），不算"有人在玩"。
 
-**(2) 切换形象**
-- 托盘菜单：`一二` / `布布` / `一起出现`，另有 `搭配 ▸`（墨镜、围巾……）、`动作 ▸`、`设置`、`关于`、`退出`。
-- 形象即数据：把 `LOOKS` 表（颜色、配饰、肩点……）做成角色包 `characters/<id>.json`，以后加新角色不用改代码。
-- 可选扩展：兼容 Codex pet 精灵图格式（8×9 网格、单格 192×208，比如 [littlegqqq/Yier-Bubu](https://github.com/littlegqqq/Yier-Bubu)），这样可以导入别人做好的像素风角色。需要按帧播放的精灵图渲染器，另外要确认素材授权。
+**(2) 菜单：托盘右键 = 熊身上右键**
+- 同一份原生菜单：`动作 ▸`、`显示 ▸`（一二和布布 / 只有一二 / 只有布布）、`大小 ▸`（小 / 中 / 大）、`搭配 ▸`（墨镜、围巾）、`没人理时自己玩`、`开机自启`、`吐出来`、`打开回收站`、`清空回收站…`、`隐藏到托盘 / 显示桌宠`、`关于`、`退出`。
+- 托盘图标左键：隐藏 / 显示桌宠；右键：菜单。
+- 设置（显示哪只、大小、搭配、自己玩）存在 WebView 的 localStorage，启动时同步菜单勾选状态。
+- 以后扩展：把 `LOOKS` 表做成角色包 `characters/<id>.json`，加新角色不用改代码；可选兼容 Codex pet 精灵图格式（8×9 网格、单格 192×208，比如 [littlegqqq/Yier-Bubu](https://github.com/littlegqqq/Yier-Bubu)），需先确认素材授权。
 
 **(3) 没人理的时候自己玩**
 - 行为调度器（JS）：用户一段时间没和熊互动后，按权重随机挑一个活动，做完再挑下一个：
@@ -168,44 +176,54 @@ Rust 负责系统能力，网页负责画熊。
 
 流程：
 
-1. 文件拖到熊身上 → Tauri `DragDropEvent::Enter` → 熊张大嘴、眼睛放光。
-2. 松手 `Drop` → 前端调用 Rust 命令 `eat_files(paths)`。
+1. 文件或文件夹拖到熊身上 → 熊张开**超夸张的大嘴**（带小尖牙和舌头）、眼睛放大、举起双手、身子抖动着等。拖离熊身上嘴就合上。
+2. 松手 → `check_meal(paths)` 检查能不能吃 → `eat_files(paths)`。
 3. Rust 用 [`trash`](https://crates.io/crates/trash) crate 把文件**移到系统回收站**（Windows 回收站 / macOS 废纸篓 / Linux FreeDesktop Trash）。
-4. 熊嚼几下、打个嗝，气泡提示："吃掉了 3 个文件 · 在回收站可以找回"。
+4. 文件图标飞进嘴里，熊嚼几下、冒星星，气泡："吃掉了 3 个，嗝～ 在回收站可以找回"。
 
-安全规则（必须做）：
+安全规则（已实现）：
 
-- **永远不做永久删除**，只移进系统回收站，用户随时可以找回。
-- 一次超过 20 个文件、总大小超过 1 GB、包含文件夹时，先弹确认框。
-- 拒绝系统目录、盘符根目录和程序自身目录。
-- 右键菜单提供「吐出来（撤销上一次）」，Windows / Linux 用 `trash::os_limited::restore_all`；macOS 不支持程序内还原，改为提示"打开废纸篓"。另有「打开回收站」。
-- 本地记录每次吃了什么（文件名、时间、原路径），方便追溯。
+- 投喂**只移进系统回收站**，不做永久删除。Windows 上 `trash` 使用 `FOF_ALLOWUNDO | FOF_WANTNUKEWARNING`：如果某个文件大到进不了回收站，系统会先弹警告，而不是悄悄删掉。
+- 一次超过 20 个，或总大小超过 1 GB（文件夹会估算大小），先在气泡里问"要吃掉吗？"。
+- 拒绝：盘符根目录、用户主目录本身、系统和程序目录（`SystemRoot`、`Program Files`、`ProgramData`、`/usr`、`/System` 等）、程序自身目录、不存在的路径。Rust 端会再检查一遍，不信任前端传来的数据。
+- 「吐出来」撤销上一次投喂：Windows / Linux 用 `trash::os_limited::restore_all`；macOS 不支持程序内还原，会提示去废纸篓"放回原处"。
+- 每次吃了什么都追加记录到 `<应用数据目录>/meals.log`（时间 + 原路径）。
+
+「清空回收站…」（右键菜单）：
+
+- 会**永久删除**回收站里的所有东西，所以必须先在熊的气泡里确认："回收站里有 N 个东西，全部清空吗？清空后就找不回来了" → [清空] [算了]。
+- Windows / Linux 用 `trash::os_limited::purge_all`；macOS 暂不支持，提示在废纸篓里清空。
 
 **(5) 其他**
-- 开机自启：`tauri-plugin-autostart`（设置里开关，默认关）。
-- 单实例：`tauri-plugin-single-instance`。
-- 保存位置、角色、搭配、设置：`tauri-plugin-store`。
-- 关于窗口 + 托盘提示：`一二 & 布布 桌宠 · 形象设计：黄小B · powered by nosugark`。
+- ✅ 开机自启：`tauri-plugin-autostart`（菜单里开关，默认关）。
+- ⏳ 单实例：`tauri-plugin-single-instance`。
+- ⏳ 记住熊的位置；多显示器。
+- ✅ 关于 + 托盘提示：`Designed by 黄小B · Powered by noSugarK`。
 
 ### 5.3 前后端接口
 
 | 方向 | 名称 | 说明 |
 |---|---|---|
-| JS → Rust | `eat_files(paths) -> {eaten, skipped, needsConfirm}` | 投喂 |
-| JS → Rust | `undo_last_meal()` | 吐出来 |
-| JS → Rust | `move_window(x, y)` / `get_work_area()` | 走路、贴任务栏 |
-| JS → Rust | `system_idle_seconds()` | 判断用户是否离开 |
-| Rust → JS | `menu://look` / `menu://outfit` / `menu://action` | 托盘菜单指令 |
-| Rust → JS | `drag://enter` / `drag://leave` | 拖放悬停，熊做"准备吃"的表情 |
+| JS → Rust | `set_hit_rects(rects)` | 熊和气泡的位置，用于点击穿透（变化时发送，最多 20 次/秒） |
+| JS → Rust | `check_meal(paths) -> {allowed, blocked, hasDirs, needsConfirm}` | 投喂前检查 |
+| JS → Rust | `eat_files(paths) -> 数量` | 移进回收站并记录 |
+| JS → Rust | `empty_trash() -> 数量` | 确认后清空回收站 |
+| JS → Rust | `show_menu()` | 在熊身上右键时弹出原生菜单 |
+| JS → Rust | `sync_menu(settings)` | 启动时同步菜单勾选状态 |
+| Rust → JS | `cursor [x, y]` / `idle 秒数` | 全局光标（眼睛跟随）、系统空闲时间（离开电脑就睡觉） |
+| Rust → JS | `menu [id, checked]` | 菜单指令：`act:*`、`show:*`、`size:*`、`outfit:*`、`autoplay`、`about` |
+| Rust → JS | `notice 文本` / `ask_empty 数量` | 让熊说话；请求确认清空回收站 |
+| Tauri → JS | 拖放事件 `enter / over / drop / leave` | 张大嘴等待 / 吃掉 / 合上嘴 |
 
-### 5.4 渲染代码怎么共用（M1 要做的拆分）
+### 5.4 渲染代码怎么共用（已完成）
 
 ```text
 docs/
   js/pet.js      # bearSVG()、LOOKS、状态机、移动引擎、粒子（无页面 UI）
   css/pet.css    # 角色 + 动作样式
   index.html     # 网站外壳：标题、按钮、页脚，引用上面两个文件
-  pet.html       # 桌宠外壳：透明背景、没有任何 UI，只放一只熊
+  pet.html       # 桌宠外壳：透明背景、没有任何 UI，只有熊
+  js/desktop.js  # 桌宠专用桥接
 ```
 
 `tauri.conf.json` 里 `build.frontendDist` 指向 `../../docs`，窗口加载 `pet.html`。
@@ -228,9 +246,9 @@ docs/
 | 里程碑 | 内容 | 产出 |
 |---|---|---|
 | **M0**（已完成） | 互动网页：角色、移动、各类动作、道具、搭配 | `docs/index.html` |
-| **M1** | 拆出 `pet.js / pet.css`；加图鉴页、下载页；推到 GitHub，开启 Pages | 线上网站 |
-| **M2** | Tauri 桌宠最小版：透明窗口、一只熊站在任务栏上、托盘切换形象、拖动 | 可运行的桌宠 |
-| **M3** | 自己玩的行为调度、双熊互动、投喂进回收站 + 撤销 | 功能完整的桌宠 |
+| **M1** | ✅ 拆出 `pet.js / pet.css`；⏳ 图鉴页、下载页；推到 GitHub，开启 Pages | 线上网站 |
+| **M2** | ✅ Tauri 桌宠：透明置顶窗口、点击穿透、站在任务栏上、托盘 / 右键菜单、隐藏到托盘、切换形象、大小 | 可运行的桌宠 |
+| **M3** | ✅ 自己玩、双熊互动、大嘴投喂进回收站 + 吐出来、清空回收站；⏳ 多显示器 | 功能完整的桌宠 |
 | **M4** | 自动更新、开机自启、节日 / 生日彩蛋、更多道具与服装、CI 发布三平台安装包 | v1.0 |
 
 ---
@@ -240,7 +258,7 @@ docs/
 所有对外的界面都必须带上：
 
 ```text
-形象设计：黄小B · powered by nosugark
+Designed by 黄小B · Powered by noSugarK
 ```
 
 | 位置 | 做法 |

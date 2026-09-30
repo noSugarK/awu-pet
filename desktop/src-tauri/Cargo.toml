@@ -1,0 +1,17 @@
+[package]
+name = "yierbubu"
+version = "0.1.0"
+description = "一二 & 布布 桌宠 · Designed by 黄小B · Powered by noSugarK"
+authors = ["noSugarK"]
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+trash = "5"
+user-idle = "0.6"
