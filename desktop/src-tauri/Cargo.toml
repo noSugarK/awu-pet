@@ -1,6 +1,6 @@
 [package]
 name = "yierbubu-pet"
-version = "0.2.0"
+version = "0.3.0"
 description = "YierBubu-Pet 一二布布桌宠 · Designed by 黄小B · Powered by noSugarK"
 authors = ["noSugarK"]
 license = "MIT"
