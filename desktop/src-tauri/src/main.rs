@@ -176,12 +176,11 @@ fn pet_ready(app: AppHandle, errands: State<Errands>) {
     }
 }
 
-// ---------- menus: the bear's right click is about the characters, the tray about the app ----------
+// ---------- tray menu (the bear's right click is a radial menu drawn by the page) ----------
 
 struct Menus {
-    pet: Menu<Wry>,
     tray: Menu<Wry>,
-    checks: Vec<CheckMenuItem<Wry>>, // every check item; the same id can appear in both menus
+    checks: Vec<CheckMenuItem<Wry>>,
     toggle: MenuItem<Wry>,
 }
 
@@ -197,59 +196,33 @@ fn build_menus(app: &AppHandle) -> tauri::Result<Menus> {
     let item = |id: &str, text: &str| MenuItem::with_id(app, id, text, true, None::<&str>);
     let sep = || PredefinedMenuItem::separator(app);
     let sub = |text: &str, items: &[&dyn IsMenuItem<Wry>]| Submenu::with_items(app, text, true, items);
-    let mut checks = Vec::new();
-    let mut check = |id: &str, text: &str, on: bool| -> tauri::Result<CheckMenuItem<Wry>> {
-        let c = CheckMenuItem::with_id(app, id, text, true, on, None::<&str>)?;
-        checks.push(c.clone());
-        Ok(c)
-    };
-    let autostart_on = app.autolaunch().is_enabled().unwrap_or(false);
-    // 设置 appears in both menus (as separate items kept in sync)
-    let mut settings = || -> tauri::Result<Submenu<Wry>> {
-        let size = sub("大小", &[&item("size:130", "小")?, &item("size:180", "中")?, &item("size:240", "大")?])?;
-        sub(
-            "设置",
-            &[
-                &check("on_top", "置顶", true)?,
-                &check("autoplay", "自己玩", true)?,
-                &check("autostart", "开机自启", autostart_on)?,
-                &check("explorer_menu", "文件右键菜单", true)?,
-                &sep()?,
-                &size,
-            ],
-        )
-    };
-    let pet_settings = settings()?;
-    let tray_settings = settings()?;
-    let bin = || sub("回收站", &[&item("open_trash", "打开")?, &item("empty_trash", "清空…")?]);
+    let check = |id: &str, text: &str, on: bool| CheckMenuItem::with_id(app, id, text, true, on, None::<&str>);
+    let checks = vec![
+        check("on_top", "置顶", true)?,
+        check("autoplay", "自己玩", true)?,
+        check("autostart", "开机自启", app.autolaunch().is_enabled().unwrap_or(false))?,
+        check("explorer_menu", "文件右键菜单", true)?,
+    ];
+    let size = sub("大小", &[&item("size:130", "小")?, &item("size:180", "中")?, &item("size:240", "大")?])?;
+    let mut settings_items: Vec<&dyn IsMenuItem<Wry>> = checks.iter().map(|c| c as &dyn IsMenuItem<Wry>).collect();
+    let separator = sep()?;
+    settings_items.extend([&separator as &dyn IsMenuItem<Wry>, &size]);
+    let bin = sub("回收站", &[&item("open_trash", "打开")?, &item("empty_trash", "清空…")?])?;
 
-    let pet = Menu::with_items(
-        app,
-        &[
-            &sub("互动", &[&item("act:hug", "抱抱")?, &item("act:wave", "挥手")?, &item("act:dance", "跳舞")?, &item("act:shy", "害羞")?, &item("act:rose", "送花")?])?,
-            &sub("动作", &[&item("act:think", "思考")?, &item("act:sleep", "睡觉")?, &item("act:noodle", "吃面")?, &item("act:boba", "奶茶")?])?,
-            &sub("装扮", &[&check("outfit:glasses", "墨镜", false)?, &check("outfit:scarf", "围巾", false)?])?,
-            &sub("投喂", &[&item("diary", "今日食谱")?, &item("undo", "吐出来")?])?,
-            &bin()?,
-            &sep()?,
-            &pet_settings,
-            &item("about", "关于")?,
-        ],
-    )?;
     let toggle = item("toggle", "隐藏")?;
     let tray = Menu::with_items(
         app,
         &[
             &toggle,
             &sub("角色", &[&item("show:both", "一二和布布")?, &item("show:yier", "只有一二")?, &item("show:bubu", "只有布布")?])?,
-            &tray_settings,
-            &bin()?,
+            &sub("设置", &settings_items)?,
+            &bin,
             &sep()?,
             &item("about", "关于")?,
             &item("quit", "退出")?,
         ],
     )?;
-    Ok(Menus { pet, tray, checks, toggle })
+    Ok(Menus { tray, checks, toggle })
 }
 
 fn set_visible(app: &AppHandle, show: bool) {
@@ -264,7 +237,21 @@ fn toggle_window(app: &AppHandle) {
 }
 
 fn on_menu(app: &AppHandle, event: MenuEvent) {
-    let id = event.id().as_ref();
+    handle_menu(app, event.id().as_ref());
+}
+
+/// The bear's radial menu (drawn by the page) sends the items whose work happens here.
+#[tauri::command]
+fn menu_action(app: AppHandle, id: String) {
+    handle_menu(&app, &id);
+}
+
+#[tauri::command]
+fn autostart_enabled(app: AppHandle) -> bool {
+    app.autolaunch().is_enabled().unwrap_or(false)
+}
+
+fn handle_menu(app: &AppHandle, id: &str) {
     let notice = |msg: String| {
         let _ = app.emit("notice", msg);
     };
@@ -310,8 +297,6 @@ fn on_menu(app: &AppHandle, event: MenuEvent) {
 #[serde(rename_all = "camelCase")]
 struct Settings {
     show: Vec<String>,
-    glasses: bool,
-    scarf: bool,
     autoplay: bool,
     on_top: bool,
     explorer_menu: bool,
@@ -323,8 +308,6 @@ fn sync_menu(settings: Settings, menus: State<Menus>, shared: State<Shared>, win
     shared.on_top.store(settings.on_top, Ordering::SeqCst);
     apply_on_top(&win, &shared);
     for (id, on) in [
-        ("outfit:glasses", settings.glasses),
-        ("outfit:scarf", settings.scarf),
         ("on_top", settings.on_top),
         ("autoplay", settings.autoplay),
         ("explorer_menu", settings.explorer_menu),
@@ -342,11 +325,6 @@ fn sync_menu(settings: Settings, menus: State<Menus>, shared: State<Shared>, win
     }
 }
 
-#[tauri::command]
-fn show_menu(win: WebviewWindow, menus: State<Menus>) {
-    let _ = win.popup_menu(&menus.pet);
-}
-
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| handle_args(app, &argv)))
@@ -361,7 +339,8 @@ fn main() {
             feed::eat_files,
             feed::empty_trash,
             sync_menu,
-            show_menu,
+            menu_action,
+            autostart_enabled,
             pet_ready
         ])
         .setup(|app| {

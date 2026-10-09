@@ -81,9 +81,11 @@ function show(ids) {
   bears.forEach(b => { b.hidden = !ids.includes(b.id); b.el.classList.toggle('hidden', b.hidden); });
   refresh();
 }
+// resize every bear, keeping its feet where they are
 function setSize(px) {
+  const feet = bears.map(b => { const r = rect(b); return [r.left + r.width / 2, r.bottom]; });
   document.documentElement.style.setProperty('--pet-size', px + 'px');
-  requestAnimationFrame(() => bears.forEach(b => setPos(b, b.x, b.y)));
+  bears.forEach((b, i) => { const r = rect(b); setPos(b, feet[i][0] - r.width / 2, feet[i][1] - r.height); });
 }
 
 // --- 文件投喂: gape while a file hovers, then chew and react to what it was ---

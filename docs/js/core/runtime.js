@@ -270,13 +270,14 @@ function loop(now) {
 
     // face + head look at the pointer, the partner, or the running direction
     let tx = 0, ty = 0, tt = 0;
-    if (running) { tx = b.dir * 20; ty = 3; tt = b.dir * 4; }
-    else if (b.state === 'think') { tx = -7; ty = -7; tt = -8; }
+    // the face slides toward what it looks at; the big head only leans a few degrees
+    if (running) { tx = b.dir * 16; ty = 3; tt = b.dir * 2; }
+    else if (b.state === 'think') { tx = -7; ty = -7; tt = -4; }
     else if (b.state !== 'sleep' && b.state !== 'hungry') {
       const c = center(b), o = other(b);
       const t = o && ['hug', 'sad', 'dance', 'shy'].includes(b.state) ? center(o) : mouse;
-      const dx = t.x - c.x, dy = t.y - c.y, d = Math.hypot(dx, dy) || 1, k = Math.min(d / 80, 1) * 9;
-      tx = dx / d * k; ty = dy / d * k * .7; tt = clamp(dx / 40, -10, 10);
+      const dx = t.x - c.x, dy = t.y - c.y, d = Math.hypot(dx, dy) || 1, k = Math.min(d / 80, 1) * 8;
+      tx = dx / d * k; ty = dy / d * k * .6; tt = clamp(dx / 150, -4, 4);
     }
     b.fx += (tx - b.fx) * .15; b.fy += (ty - b.fy) * .15; b.tilt += (tt - b.tilt) * .1;
     b.lean += ((running ? b.dir * 8 : 0) - b.lean) * .15;

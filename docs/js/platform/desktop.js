@@ -35,12 +35,13 @@ apply();
 
 // --- click-through: tell Rust where the bears (and their bubbles) are ---
 let sent = '';
-setInterval(() => {
-  const els = PET.dragging() ? [document.body] : document.querySelectorAll('.bear:not(.hidden), .bubble');
+function sendHitRects() {
+  const els = PET.dragging() || YB.radial.isOpen() ? [document.body] : document.querySelectorAll('.bear:not(.hidden), .bubble');
   const rects = [...els].map(el => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
   const key = rects.map(r => [r.x | 0, r.y | 0, r.w | 0, r.h | 0].join()).join(';');
   if (key !== sent) { sent = key; invoke('set_hit_rects', { rects }); }
-}, 50);
+}
+setInterval(sendHitRects, 50);
 
 // --- what the computer is doing ---
 let cursor = { x: innerWidth / 2, y: innerHeight / 2 };
@@ -48,17 +49,50 @@ listen('cursor', e => { cursor = { x: e.payload[0], y: e.payload[1] }; PET.lookA
 listen('idle', e => PET.setIdle(e.payload));
 listen('fullscreen', e => PET.setFullscreen(e.payload));
 
-// --- right click on a bear: the character menu (the tray has the system menu) ---
-addEventListener('contextmenu', e => {
-  e.preventDefault();
-  if (e.target.closest('.bear')) invoke('show_menu');
+// --- right click on a bear: radial menu (the tray keeps the native system menu) ---
+// hold right, flick toward an item, release = pick; or release and click
+addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('pointerdown', async e => {
+  if (e.button !== 2 || !e.target.closest('.bear')) return;
+  const autostart = await invoke('autostart_enabled');
+  const on = { 'outfit:glasses': settings.glasses, 'outfit:scarf': settings.scarf, on_top: settings.onTop,
+    autoplay: settings.autoplay, explorer_menu: settings.explorerMenu, autostart };
+  const leaf = (id, icon, label) => ({ id, icon, label, checked: on[id] });
+  YB.radial.open({
+    x: e.clientX, y: e.clientY,
+    items: [
+      { icon: '🤗', label: '互动', children: [leaf('act:hug', '🤗', '抱抱'), leaf('act:wave', '👋', '挥手'), leaf('act:dance', '🎵', '跳舞'), leaf('act:shy', '😊', '害羞'), leaf('act:rose', '🌹', '送花')] },
+      { icon: '💭', label: '动作', children: [leaf('act:think', '💭', '思考'), leaf('act:sleep', '💤', '睡觉'), leaf('act:noodle', '🍜', '吃面'), leaf('act:boba', '🧋', '奶茶')] },
+      { icon: '🕶️', label: '装扮', children: [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')] },
+      { icon: '🍪', label: '投喂', children: [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出来')] },
+      { icon: '🗑️', label: '回收站', children: [leaf('open_trash', '📂', '打开'), leaf('empty_trash', '🧹', '清空')] },
+      { icon: '⚙️', label: '设置', children: [leaf('on_top', '📌', '置顶'), leaf('autoplay', '🧸', '自己玩'), leaf('autostart', '🚀', '开机自启'), leaf('explorer_menu', '🖱️', '文件菜单')] },
+      leaf('toggle', '🙈', '隐藏'),
+      leaf('about', 'ℹ️', '关于'),
+    ],
+    onPick: id => (RUST_ITEMS.has(id) ? invoke('menu_action', { id }) : handleMenu(id)),
+  });
+  sendHitRects(); // take the whole window right away so a fast flick isn't lost
 });
+// items whose work happens in Rust (files, autostart, the window itself)
+const RUST_ITEMS = new Set(['undo', 'open_trash', 'empty_trash', 'autostart', 'toggle', 'quit']);
+
+// --- mouse wheel over a bear: resize (feet stay put), remembered like the other settings ---
+let saveSoon = 0;
+addEventListener('wheel', e => {
+  if (!e.target.closest('.bear')) return;
+  e.preventDefault();
+  settings.size = Math.round(Math.min(360, Math.max(90, settings.size * (e.deltaY < 0 ? 1.08 : 1 / 1.08))));
+  PET.setSize(settings.size);
+  clearTimeout(saveSoon);
+  saveSoon = setTimeout(save, 400);
+}, { passive: false });
 
 // --- menu commands from Rust ---
 const visible = () => PET.bears.filter(b => !b.hidden);
 const sayAny = (text, ms = 4000) => { const b = visible()[0]; if (b) PET.say(b, text, { ms }); };
 const TOGGLES = { 'outfit:glasses': 'glasses', 'outfit:scarf': 'scarf', autoplay: 'autoplay', on_top: 'onTop', explorer_menu: 'explorerMenu' };
-listen('menu', ({ payload: id }) => {
+function handleMenu(id) {
   const [kind, arg] = id.split(':');
   if (kind === 'act') return PET.run(arg);
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
@@ -69,7 +103,8 @@ listen('menu', ({ payload: id }) => {
   else return;
   save();
   apply();
-});
+}
+listen('menu', ({ payload: id }) => handleMenu(id));
 listen('notice', e => sayAny(e.payload));
 listen('ask_empty', async ({ payload: n }) => {
   const b = visible()[0];
