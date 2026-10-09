@@ -1,0 +1,6 @@
+node_modules/
+out/
+src/bears.generated.json
+public/audio/
+public/icon.png
+public/fonts/

@@ -1,0 +1,19 @@
+{
+  "name": "yierbubu-promo",
+  "private": true,
+  "description": "YierBubu-Pet promo video (Remotion). Designed by 黄小B · Powered by noSugarK",
+  "scripts": {
+    "prepare-assets": "node scripts/bears.mjs && node scripts/audio.mjs && node scripts/fonts.mjs",
+    "studio": "npm run prepare-assets && remotion studio src/index.ts",
+    "render": "npm run prepare-assets && remotion render src/index.ts Landscape out/yierbubu-landscape.mp4 --codec h264 --crf 16 && remotion render src/index.ts Portrait out/yierbubu-portrait.mp4 --codec h264 --crf 16"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.534",
+    "@remotion/fonts": "^4.0.534",
+    "@types/react": "^18.3.31",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.534",
+    "typescript": "^7.0.2"
+  }
+}

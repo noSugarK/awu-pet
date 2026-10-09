@@ -1,0 +1,13 @@
+/* Video overrides for docs/css/pet.css: the site's state classes pick faces and props,
+   but every motion is driven per frame through CSS variables (CSS animations don't render deterministically). */
+.vb svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.vb, .vb * { animation: none !important; transition: none !important; }
+.vb .arm-l { transform: var(--al) !important; }
+.vb .arm-r { transform: var(--ar) !important; }
+.vb .leg-l { transform: translateY(var(--ll)) !important; }
+.vb .leg-r { transform: translateY(var(--lr)) !important; }
+.vb .head { transform-box: view-box; transform-origin: 100px 150px; transform: rotate(var(--tilt)); }
+.vb .face { transform: translate(var(--fx), var(--fy)); }
+.vb .m-huge { transform: scale(var(--gape)) !important; }
+.vb .m-open { transform-box: fill-box; transform-origin: center; transform: scaleY(var(--chomp)) !important; }
+.vb .blush { transform: scale(var(--blush)) !important; }
