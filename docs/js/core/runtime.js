@@ -28,8 +28,8 @@ const bears = Object.values(YB.characters).map(ch => {
     '--rest': m.arm.rest + 'deg',
     '--sleep-arm': `translate(${m.arm.sleep.shift[0]}px, ${m.arm.sleep.shift[1]}px) rotate(${m.arm.sleep.rotate}deg)`,
     '--sleep-drop': m.ground - m.neck.y + 'px',
-    '--foot-l': px(m.feet.pivots[0]),
-    '--foot-r': px(m.feet.pivots[1]),
+    '--foot-l': px(m.legs.pivots[0]),
+    '--foot-r': px(m.legs.pivots[1]),
   }).forEach(([k, v]) => el.style.setProperty(k, v));
   el.innerHTML = `<div class="shadow"></div><div class="inner">${YB.render.bear(ch)}</div>`;
   document.body.append(el);

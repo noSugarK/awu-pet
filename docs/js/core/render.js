@@ -101,7 +101,8 @@ function bear(ch) {
   const wear = kinds => ch.accessories.filter(a => kinds.includes(a)).map(a => neckwear[a](m, p)).join('');
   return `<svg viewBox="0 0 ${W} ${H}" stroke="${p.outline}" stroke-width="${m.stroke}" stroke-linejoin="round" stroke-linecap="round">
    <g class="bodyparts">
-    ${m.feet.paths.map((d, i) => `<g class="leg leg-${i ? 'r' : 'l'}"><path fill="${p.feet}" d="${d}"/></g>`).join('')}
+    ${m.legs.fill.map((d, i) => `<g class="leg leg-${i ? 'r' : 'l'}">
+      <path fill="${p.body}" stroke="none" d="${d}"/><path fill="${p.feet}" stroke="none" d="${m.legs.sole[i]}"/><path fill="none" d="${m.legs.outline[i]}"/></g>`).join('')}
     <path fill="${p.body}" stroke="none" d="${m.body.fill}"/>
     <path fill="none" d="${m.body.outline} ${m.crotch}"/>
     ${wear(['collar'])}
