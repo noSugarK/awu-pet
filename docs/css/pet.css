@@ -1,7 +1,7 @@
 /* Shared bear styles for the website (index.html) and the desktop pet (pet.html).
    Designed by 黄小B · Powered by noSugarK */
 :root { --ink: #3a2317; }
-.bear { position: absolute; width: var(--pet-size, min(34vw, 220px)); aspect-ratio: 200 / 230; cursor: grab; outline: none; }
+.bear { position: absolute; width: var(--pet-size, min(34vw, 220px)); cursor: grab; outline: none; }
 .bear.dragging { cursor: grabbing; z-index: 10; }
 .bear.hidden { display: none; }
 .shadow { position: absolute; left: 24%; right: 24%; bottom: 1%; height: 7%; border-radius: 50%; background: rgba(74,44,32,.14); }
@@ -37,22 +37,18 @@
 .jumping .shadow { animation: shadowJump .7s ease-out; }
 
 /* SVG parts; each .arm rotates about its shoulder (local 0 0). Angles: positive = outward, same for both sides */
-/* per-character values come from characters/*.js: --rest (arm angle), --sleep-x/-y, .has-cap */
-.cap { display: none; }
-.has-cap .cap { display: inline; } /* closes the outline where the arm leaves the body */
+/* shape-dependent values (aspect ratio, --rest arm angle, --foot-l/-r, --sleep-arm, --sleep-drop)
+   are set per bear from its model by core/runtime.js */
 .arm { transform-box: view-box; transform-origin: 0 0; transform: rotate(var(--rest)); transition: transform .3s; }
 .leg { transform-box: view-box; transition: transform .3s; }
-.leg-l { transform-origin: 80px 200px; }
-.leg-r { transform-origin: 120px 200px; }
+.leg-l { transform-origin: var(--foot-l); }
+.leg-r { transform-origin: var(--foot-r); }
 .running .leg-l { animation: step .32s ease-in-out infinite alternate; }
 .running .leg-r { animation: step .32s ease-in-out infinite alternate-reverse; }
 .running .arm-l { animation: swing .32s ease-in-out infinite alternate-reverse; }
 .running .arm-r { animation: swing .32s ease-in-out infinite alternate; }
 .wave .arm-r { animation: wave .25s ease-in-out 6 alternate; }
 .s-hug .arm { transform: rotate(75deg); }
-/* the arm's inner edge is only half-outlined (a short crease) unless the arm is raised away from the body */
-.edge { display: none; }
-.s-hug .edge, .s-dance .edge, .wave .arm-r .edge { display: inline; }
 /* thinking / shy: both paws folded in front */
 .s-think .arm { transform: rotate(-48deg); }
 .s-shy .arm { animation: fidget .4s ease-in-out infinite alternate; }
@@ -71,13 +67,13 @@
 .s-noodle .p-noodle, .s-boba .p-boba, .s-rose .p-rose, .o-glasses .p-glasses, .o-scarf .p-scarf { display: inline; }
 .s-noodle .arm, .s-boba .arm, .s-rose .arm { transform: rotate(-48deg); }
 .running.s-rose .arm { animation: none; }
-.chop { transform-box: view-box; transform-origin: 130px 197px; animation: chop .45s ease-in-out infinite alternate; }
+.chop { transform-box: view-box; animation: chop .45s ease-in-out infinite alternate; }
 .p-boba { animation: sip 1.2s ease-in-out infinite alternate; }
 /* sleeping: lie down on the belly, head on the ground, paws under the chin */
 .bodyparts, .headpos { transition: opacity .4s, transform .6s ease-in-out; }
 .s-sleep .bodyparts { opacity: 0; }
-.s-sleep .headpos { transform: translateY(62px); }
-.s-sleep .arm { transition: transform .6s ease-in-out; transform: translate(var(--sleep-x, 14px), var(--sleep-y, 58px)) rotate(-78deg); }
+.s-sleep .headpos { transform: translateY(var(--sleep-drop)); }
+.s-sleep .arm { transition: transform .6s ease-in-out; transform: var(--sleep-arm); }
 .blush { transform-box: fill-box; transform-origin: center; transition: transform .3s, opacity .3s; opacity: .9; }
 .bear:hover .blush, .s-hug .blush { transform: scale(1.25); opacity: 1; }
 
@@ -101,13 +97,13 @@
 @keyframes puff { to { transform: translate(calc(-50% + var(--dx)), -120%) scale(2.2); opacity: 0; } }
 
 /* file dragged over: huge mouth waiting; dropped: chomp and chew */
-.m-huge { display: none; transform-box: fill-box; transform-origin: 50% 20%; }
+.m-huge { display: none; transform-box: fill-box; transform-origin: 50% 0; }
 .s-hungry .m-normal, .s-hungry .m-open, .s-eat .m-normal { display: none; }
 .s-hungry .m-huge { display: inline; animation: gape .35s ease-in-out infinite alternate; }
 .s-hungry .inner { animation: wobble .35s ease-in-out infinite alternate; }
 .s-hungry .arm { transform: rotate(80deg); }
-.s-hungry .eyes-open ellipse, .s-hungry .eyes-open circle { transform-box: fill-box; transform-origin: center; transform: scale(1.45); }
-.s-hungry .edge, .s-eat .edge { display: inline; }
+.s-hungry .eyes-open { display: none; }
+.s-hungry .eyes-happy { display: inline; } /* eyes squeezed shut: "> <" */
 .s-eat .eyes-open { display: none; }
 .s-eat .eyes-happy { display: inline; }
 .s-eat .m-open { display: inline; transform-box: fill-box; transform-origin: center; animation: chomp .16s ease-in-out infinite alternate; }

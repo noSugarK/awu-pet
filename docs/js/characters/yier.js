@@ -1,20 +1,19 @@
 // 一二 · Designed by 黄小B · Powered by noSugarK
-// Character data only: how she looks, how she behaves. Rendering lives in core/render.js.
+// Character = which model + how it's painted + how she behaves. Colours sampled from design/reference/yier-1.jpg.
 YB.character({
   id: 'yier',
   name: '一二',
-  look: {
-    body: '#fffdf8',
-    ear: '#5b3524',
-    earIn: null,          // solid dark ears
-    blush: '#f9a9a0',
-    tongue: true,         // ω mouth with a pink tongue
-    accessories: ['collar', 'bow'],
-    shoulder: [55, 159],  // on the body edge, so the arms stick out sideways
-    restArm: 40,          // degrees outward
-    armCap: true,         // outline where the arm leaves the body
-    sleepArm: [21, 56],   // paw offset when lying down
+  model: 'chibi-bear',
+  palette: {
+    body: '#fdfdfb',
+    outline: '#3f0c03',   // also eyes and mouth
+    ear: '#440d02',       // solid dark ears
+    earInner: null,
+    blush: '#efb7aa',
+    feet: '#3f0c03',      // dark little feet
+    collar: '#420d05',
   },
+  accessories: ['collar', 'bow'],
   fx: ['♥', '♡'],
   fxColor: '#ff6b8a',
   // 0..1, used by behaviors/brain.js to weigh what she does on her own

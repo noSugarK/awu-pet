@@ -1,20 +1,18 @@
 // 布布 · Designed by 黄小B · Powered by noSugarK
-// Character data only: how he looks, how he behaves. Rendering lives in core/render.js.
+// Character = which model + how it's painted + how he behaves. Colours sampled from design/reference/bubu-1.jpg.
 YB.character({
   id: 'bubu',
   name: '布布',
-  look: {
-    body: '#c9895a',
-    ear: '#b87644',
-    earIn: '#6f3f25',
-    blush: '#f7aa3c',
-    tongue: false,        // plain ω mouth
-    accessories: [],
-    shoulder: [62, 157],
-    restArm: -32,         // curled paws resting in front of the belly
-    armCap: false,
-    sleepArm: [14, 58],
+  model: 'chibi-bear',
+  palette: {
+    body: '#e2b08e',
+    outline: '#4a261a',   // also eyes and mouth
+    ear: '#e2b08e',
+    earInner: '#4a261a',
+    blush: '#fcce93',
+    feet: '#e2b08e',      // feet in body colour, outlined
   },
+  accessories: [],
   fx: ['★', '✦'],
   fxColor: '#f5b400',
   giver: true,            // brings the rose

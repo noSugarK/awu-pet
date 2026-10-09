@@ -15,25 +15,34 @@ const config = {
 
 const bears = Object.values(YB.characters).map(ch => {
   const el = document.createElement('div');
-  el.className = 'bear' + (ch.look.armCap ? ' has-cap' : '');
+  const m = YB.models[ch.model];
+  el.className = 'bear';
   el.id = ch.id;
   el.tabIndex = 0;
   el.setAttribute('role', 'button');
   el.setAttribute('aria-label', ch.name);
-  el.style.setProperty('--rest', ch.look.restArm + 'deg');
-  el.style.setProperty('--sleep-x', ch.look.sleepArm[0] + 'px');
-  el.style.setProperty('--sleep-y', ch.look.sleepArm[1] + 'px');
-  el.innerHTML = `<div class="shadow"></div><div class="inner">${YB.bearSVG(ch.look, ch.id)}</div>`;
+  // everything the animations need about the shape comes from the model
+  const px = ([x, y]) => `${x}px ${y}px`;
+  Object.entries({
+    'aspect-ratio': `${m.viewBox[0]} / ${m.viewBox[1]}`,
+    '--rest': m.arm.rest + 'deg',
+    '--sleep-arm': `translate(${m.arm.sleep.shift[0]}px, ${m.arm.sleep.shift[1]}px) rotate(${m.arm.sleep.rotate}deg)`,
+    '--sleep-drop': m.ground - m.neck.y + 'px',
+    '--foot-l': px(m.feet.pivots[0]),
+    '--foot-r': px(m.feet.pivots[1]),
+  }).forEach(([k, v]) => el.style.setProperty(k, v));
+  el.innerHTML = `<div class="shadow"></div><div class="inner">${YB.render.bear(ch)}</div>`;
   document.body.append(el);
   const inner = el.querySelector('.inner');
-  return { id: ch.id, ch, el, inner, svg: inner.querySelector('svg'), head: el.querySelector('.head'), face: el.querySelector('.face'),
+  return { id: ch.id, ch, m, el, inner, svg: inner.querySelector('svg'), head: el.querySelector('.head'), face: el.querySelector('.face'),
     hidden: false, state: 'normal', timer: 0, x: 0, y: 0, goal: null, dir: 0, runUntil: 0, lastPuff: 0, lastFx: 0, fx: 0, fy: 0, tilt: 0, lean: 0, clicks: [] };
 });
 const byId = id => bears.find(b => b.id === id);
 const shown = () => bears.filter(b => !b.hidden);
 const other = b => { const o = bears.find(x => x !== b); return o && !o.hidden ? o : null; };
 const rect = b => b.el.getBoundingClientRect();
-const center = b => { const r = rect(b); return { x: r.left + r.width / 2, y: r.top + r.height * .43 }; };
+// a bear's "center" is its face (mouth height), where looks, bubbles and bursts aim
+const center = b => { const r = rect(b); return { x: r.left + r.width / 2, y: r.top + r.height * b.m.face.mouth[1] / b.m.viewBox[1] }; };
 const clamp = (v, a, z) => Math.max(a, Math.min(z, v));
 const rand = (a, z) => a + Math.random() * (z - a);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -272,7 +281,7 @@ function loop(now) {
     b.fx += (tx - b.fx) * .15; b.fy += (ty - b.fy) * .15; b.tilt += (tt - b.tilt) * .1;
     b.lean += ((running ? b.dir * 8 : 0) - b.lean) * .15;
     b.face.setAttribute('transform', `translate(${b.fx} ${b.fy})`);
-    b.head.setAttribute('transform', `rotate(${b.tilt} 100 150)`);
+    b.head.setAttribute('transform', `rotate(${b.tilt} ${b.m.viewBox[0] / 2} ${b.m.neck.y})`);
     b.svg.style.rotate = b.lean + 'deg';
   }
   requestAnimationFrame(loop);
