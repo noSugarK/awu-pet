@@ -7,6 +7,7 @@
 
 mod explorer;
 mod feed;
+mod pets;
 mod platform;
 
 use serde::{Deserialize, Serialize};
@@ -261,6 +262,7 @@ fn handle_menu(app: &AppHandle, id: &str) {
         "quit" => app.exit(0),
         "toggle" => toggle_window(app),
         "open_trash" => platform::open_trash(),
+        "open_pets" => pets::open_folder(app),
         "autostart" => {
             let launcher = app.autolaunch();
             let on = !launcher.is_enabled().unwrap_or(false);
@@ -371,7 +373,9 @@ fn main() {
             sync_menu,
             menu_action,
             autostart_enabled,
-            pet_ready
+            pet_ready,
+            pets::list_pets,
+            pets::read_pet_sheet
         ])
         .setup(|app| {
             let handle = app.handle().clone();

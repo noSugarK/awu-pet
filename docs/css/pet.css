@@ -7,6 +7,9 @@
 .shadow { position: absolute; left: 24%; right: 24%; bottom: 1%; height: 7%; border-radius: 50%; background: rgba(74,44,32,.14); }
 .inner { position: absolute; inset: 0; transform-origin: 50% 95%; animation: breathe 3s ease-in-out infinite; }
 .inner svg { width: 100%; height: 100%; display: block; overflow: visible; transform-origin: 50% 95%; }
+/* characters drawn from a sprite sheet (core/runtime.js steps background-position); their frames already breathe */
+.sprite { position: absolute; inset: 0; background-repeat: no-repeat; }
+.inner:has(.sprite) { animation: none; }
 
 @keyframes breathe { 50% { transform: scale(1.02, .975); } }
 @keyframes jump {

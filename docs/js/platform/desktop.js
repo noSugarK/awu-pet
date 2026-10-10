@@ -23,13 +23,18 @@ Object.assign(PET.config, {
   walkArea: () => ({ x0: 0, x1: innerWidth, y0: innerHeight - bearH(), y1: innerHeight }),
 });
 
-// 角色 menu (radial + tray): every cast, plus "only X" for each member of a two-member cast
+// 角色 menu (radial + tray): the built-in casts, the pet packages found on disk (Rust's list_pets), "only X" for
+// each member of a two-member cast, and the folder where pet packages go
 const visible = () => PET.bears.filter(b => !b.hidden);
+let packs = [];
 function roles() {
   const { cast } = PET, all = visible().length === cast.members.length;
   return [
-    ...Object.values(PET.casts).map(c => ({ id: 'cast:' + c.id, icon: c.icon, label: c.name, checked: c === cast && all })),
+    // a built-in cast whose name a package also has (e.g. 一二布布 drawn from frames) gives way to the package
+    ...Object.values(PET.casts).filter(c => c.id !== 'pack' && !packs.some(p => p.name === c.name)).map(c => ({ id: 'cast:' + c.id, icon: c.icon, label: c.name, checked: c === cast && all })),
+    ...packs.map(p => ({ id: 'pack:' + p.key, icon: '🐾', label: p.name, checked: cast.id === 'pack' && cast.key === p.key && all })),
     ...(cast.members.length > 1 ? cast.members.map(id => ({ id: 'show:' + id, icon: cast.icon, label: '只有' + YB.characters[id].name, checked: !all && visible()[0]?.id === id })) : []),
+    { id: 'open_pets', icon: '📂', label: '宠物包文件夹' },
   ];
 }
 // Explorer's "请X删除" entries follow who is shown; 'all' sends the whole cast
@@ -49,6 +54,19 @@ function apply() {
   invoke('sync_menu', { settings: { ...settings, roles: roles(), eaters: eaters() } });
 }
 apply();
+invoke('list_pets').then(p => { packs = p; apply(); });
+
+// characters from a pet package: their sheets come from the package files, through Rust
+for (const b of PET.bears.filter(b => b.ch.sprite)) {
+  invoke('read_pet_sheet', { path: b.ch.sprite.sheet })
+    .then(bytes => PET.setSprite(b.id, URL.createObjectURL(new Blob([bytes]))))
+    .catch(() => { // the package was moved or deleted: back to the built-in cast
+      try { localStorage.removeItem('pack'); } catch {}
+      settings.show = DEFAULTS.show;
+      save();
+      PET.setCast(Object.keys(PET.casts)[0]);
+    });
+}
 
 // --- click-through: tell Rust where the bears (and their bubbles) are ---
 let sent = '';
@@ -71,7 +89,8 @@ listen('fullscreen', e => PET.setFullscreen(e.payload));
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('pointerdown', async e => {
   if (e.button !== 2 || !e.target.closest('.bear')) return;
-  const autostart = await invoke('autostart_enabled');
+  const [autostart, found] = await Promise.all([invoke('autostart_enabled'), invoke('list_pets')]);
+  packs = found;
   const on = { 'outfit:glasses': settings.glasses, 'outfit:scarf': settings.scarf, on_top: settings.onTop,
     autoplay: settings.autoplay, explorer_menu: settings.explorerMenu, autostart };
   const leaf = (id, icon, label) => ({ id, icon, label, checked: on[id] });
@@ -84,7 +103,7 @@ addEventListener('pointerdown', async e => {
       cat('🔄', '角色', roles()),
       cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('wave', '👋', '挥手'), act('dance', '🎵', '跳舞'), act('shy', '😊', '害羞'), act('rose', '🌹', '送花')]),
       cat('💭', '动作', [act('think', '💭', '思考'), act('sleep', '💤', '睡觉'), act('noodle', '🍜', '吃面'), act('boba', '🧋', '奶茶')]),
-      cat('🕶️', '装扮', [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')]),
+      PET.can('outfit') && cat('🕶️', '装扮', [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')]),
       cat('🍪', '投喂', [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出来')]),
       cat('🗑️', '回收站', [leaf('open_trash', '📂', '打开'), leaf('empty_trash', '🧹', '清空')]),
       cat('⚙️', '设置', [leaf('on_top', '📌', '置顶'), leaf('autoplay', '🧸', '自己玩'), leaf('autostart', '🚀', '开机自启'), leaf('explorer_menu', '🖱️', '文件菜单')]),
@@ -96,7 +115,7 @@ addEventListener('pointerdown', async e => {
   sendHitRects(); // take the whole window right away so a fast flick isn't lost
 });
 // items whose work happens in Rust (files, autostart, the window itself)
-const RUST_ITEMS = new Set(['undo', 'open_trash', 'empty_trash', 'autostart', 'toggle', 'quit']);
+const RUST_ITEMS = new Set(['undo', 'open_trash', 'empty_trash', 'autostart', 'toggle', 'quit', 'open_pets']);
 
 // --- mouse wheel over a bear: resize (feet stay put), remembered like the other settings ---
 let saveSoon = 0;
@@ -122,7 +141,15 @@ function handleMenu(id) {
     save();
     return PET.setCast(arg);
   }
-  if (kind === 'cast') settings.show = PET.cast.members; // the current cast again: everyone back on screen
+  // a pet package: remember it for packs.js, then reload into it
+  const pack = kind === 'pack' && packs.find(p => p.key === id.slice(5));
+  if (pack && !(PET.cast.id === 'pack' && PET.cast.key === pack.key)) {
+    try { localStorage.setItem('pack', JSON.stringify(pack)); } catch {}
+    settings.show = ['pet-a', 'pet-b'].slice(0, pack.members.length);
+    save();
+    return PET.setCast('pack');
+  }
+  if (kind === 'cast' || pack) settings.show = PET.cast.members; // the current cast again: everyone back on screen
   else if (kind === 'show') settings.show = [arg];
   else if (kind === 'size') settings.size = +arg;
   else if (TOGGLES[id]) settings[TOGGLES[id]] = !settings[TOGGLES[id]];

@@ -1,5 +1,5 @@
 // Awu Pet public API for the platform shells (platform/web.js, platform/desktop.js).
-// Load order: core/yb.js → models/*.js → characters/*.js → casts.js → core/render.js → core/runtime.js
+// Load order: core/yb.js → models/*.js → characters/*.js → casts.js → packs.js → core/render.js → core/runtime.js
 //             → behaviors/feeding.js → behaviors/actions.js → behaviors/brain.js → pet.js → platform/*.js
 // Designed by 黄小B · Powered by noSugarK
 const PET = (() => {
@@ -10,6 +10,7 @@ const PET = (() => {
     cast: rt.cast,
     casts: YB.casts,
     setCast: rt.setCast,
+    setSprite: rt.setSprite,
     can: A.can,
     bears: rt.bears,
     run: A.run,

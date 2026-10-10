@@ -55,7 +55,9 @@ const all = { // name → () => void | Promise
 };
 // what an action needs from the cast on screen; anything not listed always works
 const duo = () => shown().length > 1;
-const needs = { dance: duo, hug: duo, rose: () => duo() && shown().some(b => b.ch.giver) };
+// sprite characters only have their sheet's animations: no held props, no outfits
+const flat = () => !shown().some(b => b.ch.sprite);
+const needs = { dance: duo, hug: duo, rose: () => duo() && flat() && shown().some(b => b.ch.giver), noodle: flat, boba: flat, outfit: flat };
 const can = name => !needs[name] || needs[name]();
 function run(name) { interact(); wake(true); return all[name]?.(); }
 

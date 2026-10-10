@@ -73,6 +73,16 @@ pub fn fullscreen_app(_own: isize) -> bool {
     false
 }
 
+pub fn open_dir(dir: &std::path::Path) {
+    #[cfg(target_os = "windows")]
+    let cmd = "explorer";
+    #[cfg(target_os = "macos")]
+    let cmd = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let cmd = "xdg-open";
+    let _ = std::process::Command::new(cmd).arg(dir).spawn();
+}
+
 pub fn open_trash() {
     #[cfg(target_os = "windows")]
     let _ = std::process::Command::new("explorer").arg("shell:RecycleBinFolder").spawn();
