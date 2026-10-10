@@ -1,115 +1,142 @@
 # Awu Pet · 项目设计文档
 
-> Designed by **黄小B** · Powered by **noSugarK**
+> 一二、布布 Designed by **黄小B** · Powered by **noSugarK**
 >
-> 一二、布布形象版权归原作者黄小B所有。本仓库是非商业的粉丝作品，所有对外发布的界面、安装包、文档都必须带上上面这行署名（见 [§7 署名规范](#7-署名规范)）。
+> 一二、布布形象版权归原作者黄小B所有；其他角色版权归各自权利人（见 [§8 署名与版权](#8-署名与版权)）。本仓库是非商业的粉丝作品。
 
-**Awu Pet**（嗷呜桌宠，原名 YierBubu-Pet）：住在任务栏上的桌宠，会陪你玩，还会帮你“嗷呜”一口吃掉文件。角色可以切换，默认是一二和布布；多角色的计划见 [design/multi-character-plan.md](design/multi-character-plan.md)。
+**Awu Pet**（嗷呜桌宠，原名 YierBubu-Pet）：住在任务栏上的桌宠，会陪你玩，还会帮你“嗷呜”一口吃掉文件。默认角色是矢量画的一二和布布；装上 Codex / Petdex 宠物包后，可以换成用动画帧画的角色，最多 4 只同屏。
 
-> Awu Pet（嗷呜桌宠）是一款桌面宠物，默认角色是一二和布布，可以在右键菜单「🔄 角色」里切换角色（换角色后菜单只显示新角色能做的事）。它们站在你的任务栏上，眼睛跟着鼠标转，没人理时自己散步、吃面、喝奶茶、跳舞、抱抱，你离开电脑就趴下睡觉。它们还是会吃文件的回收站：把文件拖到熊身上，或者在资源管理器里右键「请一二删除」，它们就会跑过去张开大嘴吃掉——文件进系统回收站，随时可以找回。
-
-本仓库最终包含三部分，全部放在同一个仓库里：
-
-| 部分 | 目录 | 技术 | 状态 |
-|---|---|---|---|
-| 互动网页 | `docs/` | HTML + SVG + CSS 动画 + 原生 JS（渲染引擎 `docs/js/pet.js`） | ✅ 已完成 |
-| 网站部署 | `docs/` | GitHub Pages（main 分支 `/docs`） | ⏳ 需要推到 GitHub 后在设置里开启 |
-| 桌宠软件 | `desktop/` | Rust + Tauri v2，复用网页的渲染代码 | 🚧 M2/M3 第一版已实现 |
-| 设计素材 | `design/` | 参考图、角色设定 | ✅ |
+| 部分 | 目录 | 技术 |
+|---|---|---|
+| 前端（网站和桌宠共用） | `docs/` | HTML + SVG + CSS 动画 + 原生 JS，无构建步骤 |
+| 网站 | `docs/index.html` | GitHub Pages（`main` / `/docs`） |
+| 桌宠 | `desktop/` | Rust + Tauri v2，窗口加载 `docs/pet.html` |
+| 宠物包安装 | `desktop/scripts/install-pets.mjs` | Node 18+ |
+| 宣传视频 | `video/` | Remotion |
+| 设计素材 | `design/` | 参考图、三视图、方案 |
 
 ---
 
 ## 1. 仓库结构
 
 ```text
-yier-bubu/
-├─ docs/                    # GitHub Pages 站点根目录（网站 + 桌宠共用的运行时）
-│  ├─ index.html            # 网站外壳：标题、下载菜单、按钮、页脚
-│  ├─ pet.html              # 桌宠外壳：透明背景，只有熊
-│  ├─ js/core/              # yb.js 命名空间 + 事件总线 · render.js 按模型 + 配色画 SVG · runtime.js 状态/移动/气泡/拖动/主循环
-│  ├─ js/models/            # chibi-bear.js：模型几何（从三视图描出），可替换
-│  ├─ js/characters/        # yier.js、bubu.js：选用的模型 + 配色、性格、台词（纯数据）
-│  ├─ js/behaviors/         # actions.js 动作 · feeding.js 文件投喂反应与今日食谱 · brain.js 自主行为
-│  ├─ js/platform/          # web.js 网站按钮与下载菜单 · desktop.js 和 Rust 通信
-│  ├─ js/pet.js             # 对外 API（PET），两个外壳只用它
-│  ├─ css/pet.css           # 共用角色 / 动作样式（不含任何角色专属规则）
-│  └─ .nojekyll             # 让 Pages 原样发布，不走 Jekyll
+awu-pet/
+├─ docs/                         # 前端：网站和桌宠共用
+│  ├─ index.html                 # 网站外壳：标题、角色 / 动作按钮、下载菜单
+│  ├─ pet.html                   # 桌宠外壳：透明背景，只有宠物
+│  ├─ css/pet.css · radial.css   # 宠物 / 动作样式（不含角色专属规则）· 圆盘菜单
+│  └─ js/
+│     ├─ core/yb.js              # 命名空间 + 事件总线
+│     ├─ models/chibi-bear.js    # 矢量模型的几何（从三视图描出）
+│     ├─ characters/*.js         # 矢量角色：一二、布布（模型 + 配色 + 性格 + 台词）
+│     ├─ casts.js                # 内置组合（一二布布）
+│     ├─ packs.js                # 桌宠：当前选中的角色名单（内置角色 + 宠物包成员）
+│     ├─ core/render.js          # 按模型 + 配色画 SVG
+│     ├─ core/runtime.js         # 生成宠物、状态、移动、气泡、拖动、主循环、帧动画
+│     ├─ behaviors/              # actions.js 动作 · feeding.js 投喂反应 · brain.js 自主行为
+│     ├─ pet.js                  # 对外 API（PET），两个外壳只用它
+│     └─ platform/               # web.js 网站 · desktop.js 桌宠桥接 · radial.js 圆盘菜单
 ├─ desktop/
-│  ├─ src-tauri/
-│  │  ├─ src/main.rs        # 覆盖窗口、点击穿透、熊菜单 / 托盘菜单、跑腿请求
-│  │  ├─ src/feed.rs        # 文件投喂：检查、移进回收站、吐出来、清空
-│  │  ├─ src/platform.rs    # 全屏程序检测、打开回收站
-│  │  ├─ src/explorer.rs    # 资源管理器右键菜单、定位文件
-│  │  ├─ Cargo.toml
-│  │  ├─ tauri.conf.json    # frontendDist 指向 ../../docs，窗口加载 pet.html
-│  │  └─ icons/
-│  └─ README.md
+│  ├─ src-tauri/src/             # main.rs · feed.rs · pets.rs · explorer.rs · platform.rs
+│  ├─ src-tauri/installer-hooks.nsh   # 安装时先卸载旧版 YierBubu-Pet
+│  └─ scripts/install-pets.mjs   # 安装宠物包
 ├─ design/
-│  └─ reference/            # 角色参考图、动作图、精灵图
-├─ DESIGN.md                # 本文档
-└─ README.md
+│  ├─ reference/                 # 一二布布三视图、各角色三视图、参考图
+│  └─ multi-character-plan.md    # 多角色方案（历史记录）
+├─ video/                        # Remotion 宣传视频
+├─ DESIGN.md · README.md · LICENSE
 ```
 
-**核心决定：只保留一份角色渲染代码。** 网页和桌宠画的是同一套 SVG，动作也是同一套 CSS/JS。Rust 只负责网页做不到的事：透明置顶窗口、托盘菜单、文件拖放进回收站、读取系统空闲时间和屏幕工作区。这样以后改形象、加动作只要改一处，网站和桌宠同时生效。
+**核心决定：只有一份前端。** 网页和桌宠画的是同一套宠物、同一套动作；Rust 只做网页做不到的事（透明置顶窗口、点击穿透、托盘、回收站、读本地宠物包、多显示器）。改宠物只改 `docs/`，两边同时生效。
 
 ---
 
-## 2. 模型与角色（当前实现）
+## 2. 两种画法
+
+### 2.1 矢量角色（内置：一二、布布）
 
 形象分三层，换模型、加角色互不影响：
 
 | 层 | 位置 | 内容 |
 |---|---|---|
-| **模型** | `docs/js/models/*.js` | 只有几何：头 / 身体 / 手 / 脚的路径，眼睛、嘴、腮红、脖子、手捧位置、地面等锚点，手的默认角度和睡觉姿势。不含颜色和性格。 |
-| **角色** | `docs/js/characters/*.js` | 选用哪个模型 + 配色（身体、描边、耳朵、腮红、脚、项圈）+ 配饰 + 性格 + 台词。 |
-| **渲染器** | `docs/js/core/render.js` | 通用：按模型锚点生成脸、表情、领结、围巾和道具；动画需要的尺寸（宽高比、脚的转轴、睡觉时头落下的距离、手的角度）由 `runtime.js` 从模型读出来交给 CSS。 |
+| 模型 | `models/*.js` | 只有几何：头 / 身体 / 手 / 脚的路径，眼睛、嘴、腮红、脖子、手捧位置、地面等锚点 |
+| 角色 | `characters/*.js` | 用哪个模型 + 配色 + 配饰 + 性格（`sleepiness` / `playfulness` / `social`，0–1）+ 台词 |
+| 渲染器 | `core/render.js` | 按模型锚点生成脸、表情、领结、围巾、道具；可选：无耳模型、分层附加形状、鼻子 |
 
-当前唯一的模型是 `chibi-bear`，按 `design/reference/yier-1.jpg`、`bubu-1.jpg` 正面三视图描出（坐标换算写在模型文件开头），一二和布布共用：上宽下圆的大头、两颊下方的小台阶、窄身体、贴在身体两侧的扁圆手、两条短脚。侧视图 / 背视图还没用上，以后可以加在模型里。
+`chibi-bear` 按 `design/reference/yier-1.jpg`、`bubu-1.jpg` 的正面三视图描出，一二和布布共用。
 
 | | 一二 | 布布 |
 |---|---|---|
 | 身体 | `#fdfdfb` | `#e2b08e` |
 | 描边 / 眼睛 / 嘴 | `#3f0c03` | `#4a261a` |
-| 耳朵 | 实心深色 `#440d02` | 身体色，内圈 `#4a261a` |
+| 耳朵 | 实心深色 | 身体色，深色内圈 |
 | 腮红 | `#efb7aa` | `#fcce93` |
-| 脚 | 深色 | 身体色 |
-| 配饰 | 项圈 + 胸前双瓣领结 | 无 |
+| 配饰 | 项圈 + 领结 | 无 |
 
-加一个新模型：在 `models/` 里写一个提供同样字段的文件，在 HTML 里引用，角色的 `model` 指向它即可。
+矢量角色支持全部动作：眼睛跟着鼠标、吃面、奶茶、送花、墨镜 / 围巾、投喂时的超大嘴。
 
----|---|---|
-| 身体色 | `#fffdf8` 暖白 | `#c9895a` 棕 |
-| 耳朵 | 实心深棕 `#5b3524` | 棕 `#b87644`，内圈 `#6f3f25` |
-| 腮红 | 粉 `#f9a9a0` | 橙黄 `#f7aa3c` |
-| 嘴 | ω + 粉舌头 | ω |
-| 配饰 | 脖子一圈细项圈 + 胸前小领结 `#6b3a26` | 无 |
-| 手 | 从身体两侧伸出的圆手（肩点在身体边缘，默认外张 40°） | 弯在肚子前面的蜷爪（默认内收 32°） |
+### 2.2 帧动画角色（宠物包）
 
-角色是数据（`docs/js/characters/*.js`）：外观（颜色、配饰、肩点、手的默认角度）、性格（`sleepiness` 爱睡 / `playfulness` 爱玩 / `social` 黏人，0–1）、台词。画法约定（`core/render.js` 的 `bearSVG()`）：
+Codex / [Petdex](https://petdex.dev) 宠物包：一个文件夹，含 `pet.json` 和一张精灵图（8 列 × 9 行，每格 192 × 208，透明背景，每行一个动作，每行帧数从图里数出来）。
 
-- 画布 `viewBox="0 0 200 230"`，描边 `#3a2317`，宽 3，圆角连接。
-- 头：上窄下宽的"糯米团"形；身体：圆梨形，无脖子；腿：两条短腿，中间一道缝。
-- **每只熊只有一对手**，所有动作都只是转动这对手（正角度 = 向外，左右镜像）。手只描外侧和指尖，从肩膀长出来，不会看起来和身体脱节。
-- 脸（眼睛、腮红、嘴、墨镜）在一个组里，跟着鼠标平移，被头的轮廓裁剪。
+| 行 | Codex 含义 | 桌宠里用于 |
+|---|---|---|
+| 0 | idle | 待机 |
+| 1 / 2 | running-right / running-left | 往右 / 往左跑（含拖动、散步） |
+| 3 | waving | 挥手、抱抱、跳舞、害羞（默认） |
+| 4 | jumping | 开心、惊讶、等投喂 |
+| 5 | failed | 难过、生气 |
+| 6 | waiting | 睡觉（默认） |
+| 7 | running（忙碌） | 嚼东西 |
+| 8 | review | 思考 |
+
+**每只宠物有自己的动作。** 同样 9 行，各家画的内容不一样（小白的第 3–8 行是比心、撒花、流汗、魔法棒、唱歌、打电话）。`install-pets.mjs` 在每个 `pet.json` 里写一个 `awu` 字段：
+
+```json
+"awu": {
+  "actions": [[3, "💗", "比心"], [4, "🎉", "撒花"], …],   // 第 3–8 行按画面命名，进右键菜单
+  "states": { "sleep": 5, "shy": 6 },                    // 这只宠物的某个状态用哪一行（覆盖上表）
+  "flipRunning": true                                    // 这张图的向左 / 向右跑两行画反了（小金毛）
+}
+```
+
+没有 `awu` 的宠物包用 Codex 默认含义命名。帧动画角色没有道具和装扮，相应菜单自动隐藏；双击它随机来一个自己的动作，鼠标停在它身上会害羞，没人理时会自己做自己的动作。
+
+| 宠物包 | 来源 | 自己的动作（第 3–8 行） |
+|---|---|---|
+| 一二 / 布布 | [littlegqqq/Yier-Bubu](https://github.com/littlegqqq/Yier-Bubu) | 挥手 · 欢呼 · 哭哭 · 扭扭 · 跳舞（布布：踏步）· 卖萌（布布：撒娇） |
+| 小白 | Petdex `line-puppy` | 比心 · 撒花 · 流汗 · 魔法棒 · 唱歌 · 打电话 |
+| 小金毛 | Petdex `xiao-jimao` | 闪闪 · 爱心气球 · 哭哭 · 比心 · 坐长椅 · 疑惑（跑步两行互换） |
+| 噜噜 | Petdex `lulu-3` | 挥手 · 开心 · 困了 · 摸肚子 · 抱臂 · 托腮（睡觉用第 5 行） |
+| 噜妹 | Petdex `lumei` | 挥手 · 欢呼 · 委屈 · 害羞 · 卖萌 · 发呆 |
+| 奶龙 | Petdex `nailong-4` | 挥手 · 欢呼 · 委屈 · 偷笑 · 扭扭 · 托腮 |
+| 奶蛙 | Petdex `nailong`（改名） | 挥手 · 欢呼 · 哭哭 · 蹦跶 · 扭扭 · 大笑 |
+
+**不分发别人的图。** 仓库和安装包里没有任何宠物包；`install-pets.mjs` 从 Petdex 公开目录（`assets.petdex.dev/manifests/petdex-v2.json`）和 GitHub 下载到用户自己的电脑，来源、作者和版权行写进 `pet.json`（`source`、`credit`），仅供个人使用。
+
+### 2.3 选谁上场
+
+- 桌宠在 `<应用数据>/pets` 和 `~/.codex/pets`（`npx petdex install` 的位置）里找宠物包；一个文件夹里放一个宠物包是一只，放两个是一组（以文件夹命名）。
+- 右键「角色」列出每个角色（内置角色和宠物包成员；宠物包里有同名角色时内置的让位）：**点击换成它，按住 Ctrl / Shift 点击添加或移除**，最多 4 只。托盘「角色」只能切换。
+- 选中的名单存在 `localStorage.roster`，页面重新加载后由 `packs.js` 注册成角色组 `roster`；宠物包被删掉时自动去掉对应角色。
 
 ---
 
-## 3. 动作与道具
+## 3. 动作与行为
 
-### 3.1 已实现
+### 3.1 交互
 
-| 类别 | 动作 | 触发方式 |
-|---|---|---|
-| 基础 | 眼睛和头跟着鼠标、呼吸、悬停害羞腮红 | 自动 |
-| 基础 | 点击跳起（一二冒爱心、布布冒星星）、连点 5 下生气 | 点击 |
-| 移动 | 追着鼠标跑（逐帧移动 + 腿交替 + 摆手 + 烟尘） | 拖动 |
-| 移动 | 两只一起跑过去挥手 | 双击空白处 |
-| 互动 | 拥抱、分开太远会哭 | 拖到一起 / 拉远 |
-| 动作 | 思考（头顶冒 ?）、跳舞（手拉手 + 音符）、害羞、睡觉（趴下 + Zzz） | 按钮；闲置 12 秒自动睡 |
-| 道具 | 🍜 吃面（碗 + 筷子 + 热气）、🧋 奶茶（吸管 + 珍珠）、🌹 送花（布布跑过去送给一二） | 按钮 |
-| 搭配 | 🕶️ 墨镜、🧣 红围巾（可叠加，一直戴着直到再点一次） | 开关按钮 |
+| 操作 | 效果 |
+|---|---|
+| 移动鼠标 | 矢量角色的眼睛和头跟着看 |
+| 点击 / 连点 5 下 | 跳起冒爱心或星星 / 生气 |
+| 拖动 | 追着鼠标跑（帧动画：跑步行），拖到另一只身边抱抱，分开太远会难过 |
+| 双击帧动画角色 | 随机来一个它自己的动作 |
+| 鼠标停在帧动画角色身上 | 害羞 |
+| 滚轮 | 调大小（脚底不动，会记住） |
+| 右键 | 圆盘菜单：角色、互动、动作（帧动画角色是它自己的动作列表）、装扮、投喂、回收站、设置、隐藏、关于 |
 
-### 3.1.1 文件投喂反应（`behaviors/feeding.js`）
+### 3.2 文件投喂反应（`behaviors/feeding.js`）
 
 | 吃到 | 反应 |
 |---|---|
@@ -120,244 +147,113 @@ yier-bubu/
 | 📚 文档 | "好多字……吃得有点困"，吃完打个盹 |
 | 💻 代码 | "程序？嚼起来咔咔响" |
 | ⚠️ 程序 | "这个真的可以吃吗？"，吃完吓一跳 |
-| 📦 文件夹 | "一整箱！"，另一只跑过来一起搬 |
+| 📦 文件夹 | "一整箱！"，旁边那只跑过来一起搬 |
 | 超过 500 MB | "好撑……差点吃不下！" |
 
 「投喂 ▸ 今日食谱」按天统计吃了什么，显示饱腹度。
 
-### 3.1.2 自主行为（`behaviors/brain.js`）
+### 3.3 自主行为（`behaviors/brain.js`）
 
-- 按性格给每个活动加权：爱玩的更常散步、吃东西、追鼠标，黏人的更常挥手、抱抱、跳舞，爱睡的更常打盹。
-- 23 点到 6 点：更容易打盹，没人理时更快睡着。
-- 两只之间的小剧情：一只打盹时另一只走过去喊名字、戳醒，然后追着玩；一只单独吃东西时另一只"你又偷吃！"—"嘿嘿～"。
+- 按性格给活动加权：爱玩的更常散步、玩耍、追鼠标，黏人的更常挥手、抱抱、跳舞，爱睡的更常打盹；帧动画角色还会做自己的动作。
+- 23 点到 6 点更容易犯困；你离开电脑（系统空闲时间）就睡觉，回来醒。
+- 多只同屏时任挑两只演小剧情：戳醒打盹的、追着玩、抱抱、"你又偷吃！"—"嘿嘿～"。
 - 鼠标甩得很快：最爱玩的那只冲过去追。
-- 前台是全屏程序（游戏、视频）：两只退到角落，桌宠暂时不置顶，退出全屏后恢复。
-- 桌宠记住熊的位置，下次启动还在原处。
-
-### 3.2 调研：表情包里常见的动作、道具、服装
-
-一二布布的表情包主要在微信和 QQ 表情商店，截至目前已出到第 18 弹以上。海外叫 "Bubu & Dudu"，注意 **Bubu 指一二，Dudu 指布布**。国内站点（知乎、百度百科）屏蔽了抓取，下面的主题主要整理自 Tenor / GIFDB 的动图标题和描述：
-
-| 主题 | 画面 | 建议做法 | 优先级 |
-|---|---|---|---|
-| 吃面 / 吃东西 | 两只用筷子吃面 | ✅ 已做 | — |
-| 送花 | 布布送一二红玫瑰 | ✅ 已做 | — |
-| 喝饮料 | 端着杯子喝茶 | ✅ 奶茶已做，可加咖啡 | — |
-| 墨镜 + 购物袋 | 戴墨镜拎购物袋逛街 | 墨镜已做，加购物袋道具 + 走路动作 | 高 |
-| 红围巾 | 冬天围红围巾 | ✅ 已做，可配飘雪背景 | — |
-| 亲亲 / 爱心 | 亲一下，爱心飘起来 | 两只靠近、头互相歪、嘴变 3 形 + 大爱心 | 高 |
-| 晚安 / 睡觉 | 盖被子、躺床上 | 在睡觉动作上加枕头、被子、月亮 | 高 |
-| 青蛙头套 | 穿绿色青蛙服抱着对方 | 服装层：头顶加青蛙眼睛的头套 | 中 |
-| 粉色小熊服 | 穿粉色熊玩偶服 | 服装层：全身换色 + 外耳 | 中 |
-| 办公 / 咖啡 | 坐转椅喝咖啡 | 道具：转椅 + 咖啡杯（桌宠"陪你上班"模式） | 中 |
-| 滑板 | 踩滑板 | 移动时有概率踩滑板滑过去 | 中 |
-| 按摩 / 捶背 | 一只给另一只捶背 | 双人动作：一只坐、一只捶 | 低 |
-| 生日 | 12 月 20 日是一二的生日 | 当天自动戴派对帽、出现蛋糕 | 高（彩蛋） |
-| 节日 | 过年、情人节等主题包 | 按日期自动换装：春节红包灯笼、情人节玫瑰、夏天西瓜、下雨天打伞 | 中 |
-
-调研来源见文末 [参考资料](#参考资料)。
-
-### 3.3 "搭配动作展示"怎么做
-
-网页上加一个 **图鉴页**（`docs/gallery.html`）：每张卡片是一个小画布，里面的一二和布布循环播放一个动作或一套搭配，比如"墨镜 + 购物袋 + 走路""围巾 + 飘雪 + 牵手"。卡片直接复用 `bearSVG()` 和状态类名，不需要额外的图片素材。
-
-实现上，道具和服装各分一层：
-
-- **道具**（`.prop.p-xxx`）：拿在手上的东西。显示时同时把手转到身前（`rotate(-48deg)`），做完动作就消失。
-- **服装**（`.o-xxx`）：穿戴在身上，可叠加，持久保留；桌宠里会记住上次的搭配。
-- 新增一件东西 = 在 `bearSVG()` 里加一个 SVG 组 + 一行 CSS 显示规则 + 一个按钮或菜单项。
+- 前台是全屏程序：退到角落，暂时不置顶，退出全屏后恢复。
 
 ---
 
-## 4. 网站：GitHub Pages
+## 4. 桌宠（Rust + Tauri v2）
 
-### 部署步骤
+### 4.1 窗口
 
-1. 把仓库推到 GitHub（公开仓库，或私有仓库 + 付费计划）。
-2. 仓库 **Settings → Pages → Build and deployment**：Source 选 **Deploy from a branch**，Branch 选 `main`，文件夹选 `/docs`，保存。
-3. 一两分钟后访问 `https://<用户名>.github.io/<仓库名>/`。
-4. 可选：要绑定自定义域名，在 `docs/CNAME` 写域名，并在 DNS 里加 CNAME 记录。
+- 一个无边框、透明、置顶、不进任务栏的窗口，**覆盖所有显示器工作区的外接矩形**；Rust 把每块屏的工作区（页面坐标，主屏在前）告诉页面，插拔显示器时重新覆盖。
+- 宠物沿着自己所在那块屏的底边（任务栏上沿）走；新宠物在主屏右下角出现；落在两块屏之间空白处的会移到最近的屏上。
+- 点击穿透：Rust 每 16 ms 读一次全局光标，只有光标在宠物或气泡上时窗口才接收鼠标。
+- 已知限制：整个窗口用一个缩放比例，两块屏缩放不同时，第二块屏上的位置会略有偏差。
 
-不需要 GitHub Actions：`docs/` 里是纯静态文件，Pages 直接发布。`.nojekyll` 已经放好，避免 Jekyll 忽略下划线开头的文件。
+### 4.2 当回收站
 
-### 站点页面规划
+1. 文件拖到宠物身上 → 张大嘴等着；拖走就合上。
+2. 松手 → `check_meal(paths)` 检查 → `eat_files(paths)` 用 [`trash`](https://crates.io/crates/trash) 移进系统回收站。
+3. 文件图标飞进嘴里，嚼几下，气泡"吃掉了 N 个 · 在回收站可以找回"。
 
-| 页面 | 内容 |
-|---|---|
-| `index.html` | 现在的互动页（首页） |
-| `gallery.html` | 动作 / 搭配图鉴（§3.3） |
-| `download.html` | 桌宠下载：链接到 GitHub Releases 最新版，分 Windows / macOS / Linux |
-| 页脚（所有页面） | `Designed by 黄小B · Powered by noSugarK` + 版权说明 |
+安全规则：
 
-目前唯一的外部依赖是 Google Fonts 的站酷快乐体。离线或国内访问慢时会退回系统字体；要更稳可以把字体子集化后放进 `docs/fonts/`。
+- **只移进系统回收站，不做永久删除**（Windows 用 `FOF_ALLOWUNDO | FOF_WANTNUKEWARNING`，放不进回收站时系统先警告）。
+- 一次超过 20 个或总大小超过 1 GB，先在气泡里确认。
+- 拒绝盘符根目录、用户主目录、系统和程序目录、程序自身目录、不存在的路径；Rust 端会再检查一遍，不信任前端数据。
+- 「吐出来」撤销上一次投喂（macOS 需要在废纸篓里"放回原处"）；每次投喂记到 `<应用数据>/meals.log`。
+- 「清空回收站」会永久删除，必须先在气泡里确认。
+
+### 4.3 资源管理器右键（Windows）
+
+- 注册在当前用户注册表（`HKCU\Software\Classes\*\shell`、`Directory\shell`，键名 `Awu-Pet.<角色>`），不需要管理员；旧版的 `YierBubu*` 键会被清掉。
+- 菜单项跟着当前显示的角色走：每只一项「请X删除」；两只加「请A和B删除」，三只以上加「请大家一起删除」。设置里可关闭。
+- 选中后 Explorer 运行 `Awu-Pet.exe --eat <角色|all> "<路径>"`；已在运行时由单实例插件转交，400 ms 内的多个文件合并成一次跑腿；用 UI Automation 定位被选中的文件，宠物冲过去吃掉后走回原处。
+- Windows 11 新版右键菜单只认 MSIX 注册的命令，这些项在「显示更多选项」里。
+
+### 4.4 宠物包读取
+
+`pets.rs`：`list_pets()` 列出两个文件夹里的宠物包（名字、精灵图路径、`credit`、`awu`）；`read_pet_sheet(path)` 只返回这两个文件夹里的 `.webp` / `.png`，页面拿到后转成 Blob URL。
+
+### 4.5 其他
+
+- 开机自启（`tauri-plugin-autostart`，默认关）；单实例（`tauri-plugin-single-instance`）。
+- 设置、位置、今日食谱、角色名单都存在 WebView 的 `localStorage`；identifier 沿用 `com.nosugark.yierbubupet`，从 YierBubu-Pet 升级后全部保留，旧的开机自启项自动迁移。
+- 前后端接口见 [`desktop/README.md`](desktop/README.md)。
+
+### 4.6 构建与发布
+
+- 本地：`cd desktop/src-tauri && cargo run`；打包：`cargo install tauri-cli --version "^2"` 后在 `desktop/` 运行 `cargo tauri build`。
+- 发布：改 `tauri.conf.json` 的 `version`，推送同名 tag `v*`，`.github/workflows/release.yml` 用 `tauri-action` 打包 Windows（NSIS / MSI）、macOS（dmg，Intel + Apple Silicon）、Linux（AppImage / deb），上传到 Releases。
+- 安装包暂未签名：Windows 有 SmartScreen 提示，macOS 需要 `xattr -cr`。
 
 ---
 
-## 5. 桌宠软件：Rust + Tauri v2
+## 5. 网站：GitHub Pages
 
-### 5.1 为什么选 Tauri
+- 仓库 Settings → Pages → Deploy from a branch → `main` / `/docs`，地址 `https://nosugark.github.io/awu-pet/`。
+- `docs/` 是纯静态文件，`.nojekyll` 已放好。网站展示内置的矢量一二布布（网页读不了本地宠物包）；下载菜单直接链到最新 Release 的安装包。
+- 唯一外部依赖是 Google Fonts 的站酷快乐体，访问不到时退回系统字体。
 
-| 方案 | 优点 | 缺点 | 结论 |
-|---|---|---|---|
-| **Tauri v2**（Rust 后端 + 系统 WebView） | 直接复用网页的 SVG/CSS 动画；安装包小（Windows 约 3–10 MB）；透明窗口、托盘、拖放都有现成 API | 依赖系统 WebView（Win10/11 自带 WebView2） | ✅ 采用 |
-| 纯 Rust（winit + tiny-skia / egui） | 没有 WebView | 所有动画要用 Rust 重写一遍，改形象要维护两套 | ❌ |
-| Bevy | 游戏引擎，动画系统强 | 体积大、耗电，桌宠用不上 | ❌ |
+---
 
-Rust 负责系统能力，网页负责画熊。
-
-### 5.2 功能清单
-
-**(1) 透明置顶窗口 + 点击穿透**
-- 一个无边框、透明、置顶、不进任务栏的窗口，铺满主显示器的工作区（`work_area`，即任务栏以上的区域）。两只熊都在这个窗口里，所以网页里的跑动、拥抱、跳舞、送花等双人互动全部原样可用。
-- 点击穿透：Rust 每 16 ms 读一次全局光标，只有光标在熊（或它的气泡）上时窗口才接收鼠标，其余时候鼠标直接穿过去操作桌面。拖动熊时临时接收整个窗口，防止拖太快时"脱手"。
-- 熊默认站在右下角任务栏上沿，自己散步也沿着底边走；可以拖到屏幕任何地方。
-- 窗口配置：`transparent, decorations: false, alwaysOnTop, skipTaskbar, shadow: false, resizable: false, focus: false`。
-- 眼睛跟着全局光标转（Rust 推送 `cursor` 事件），不算"有人在玩"。
-
-**(2) 菜单：托盘右键 = 熊身上右键**
-- **熊身上右键 = 圆盘菜单**（`js/platform/radial.js`，网页画的，不是系统菜单）：按住右键往某个方向一划、松开即选中；也可以松开后再点。内圈：角色、互动、动作、装扮、投喂、回收站、设置、隐藏、关于（只显示当前角色能做的项，比如只有一只时没有抱抱、跳舞、送花）；指向有子项的分类时外圈展开子项（抱抱 / 挥手 / 跳舞…）。需要 Rust 执行的项（吐出来、打开 / 清空回收站、开机自启、隐藏）通过 `menu_action` 命令交给 Rust。
-- **鼠标放在熊上滚动滚轮**：调整大小，脚底位置不动，大小会被记住。
-- **托盘 = 系统功能**：`隐藏 / 显示`、`角色 ▸`（每个组合一项，双人组合再加「只有 X」，列表由页面通过 `sync_menu` 发给 Rust）、`设置 ▸`（置顶、自己玩、开机自启、文件右键菜单、大小）、`回收站 ▸`、`关于`、`退出`。托盘悬停只显示软件名 `Awu Pet`。
-- 托盘图标左键：隐藏 / 显示桌宠；右键：菜单。
-- 设置（显示哪只、大小、搭配、自己玩）存在 WebView 的 localStorage，启动时同步菜单勾选状态。
-- 以后扩展：把 `LOOKS` 表做成角色包 `characters/<id>.json`，加新角色不用改代码；可选兼容 Codex pet 精灵图格式（8×9 网格、单格 192×208，比如 [littlegqqq/Yier-Bubu](https://github.com/littlegqqq/Yier-Bubu)），需先确认素材授权。
-
-**(3) 没人理的时候自己玩**
-- 行为调度器（JS）：用户一段时间没和熊互动后，按权重随机挑一个活动，做完再挑下一个：
-  - 沿任务栏散步、坐下东张西望、吃面、喝奶茶、两只一起跳舞 / 拥抱 / 牵手散步、追一只飞过的蝴蝶。
-  - 用户离开电脑（Rust 读系统空闲时间，比如 5 分钟无键鼠）→ 趴下睡觉；用户回来 → 醒来伸懒腰。
-  - 深夜（23 点后）→ 打哈欠、盖被子；12 月 20 日 → 生日彩蛋。
-- 用户点击、拖动、投喂时立即打断当前活动。
-- 可选：鼠标经过时熊会追着光标跑一小段（设置里可关）。
-
-**(4) 当回收站："把文件喂给它吃掉"**
-
-流程：
-
-1. 文件或文件夹拖到熊身上 → 熊眯起眼睛"> <"，张开**超夸张的椭圆大嘴**（两颗小门牙、舌头，参考 `design/reference/bubu-4.jpg`），举起双手、身子抖动着等。拖离熊身上嘴就合上。
-2. 松手 → `check_meal(paths)` 检查能不能吃 → `eat_files(paths)`。
-3. Rust 用 [`trash`](https://crates.io/crates/trash) crate 把文件**移到系统回收站**（Windows 回收站 / macOS 废纸篓 / Linux FreeDesktop Trash）。
-4. 文件图标飞进嘴里，熊嚼几下、冒星星，气泡："吃掉了 3 个，嗝～ 在回收站可以找回"。
-
-安全规则（已实现）：
-
-- 投喂**只移进系统回收站**，不做永久删除。Windows 上 `trash` 使用 `FOF_ALLOWUNDO | FOF_WANTNUKEWARNING`：如果某个文件大到进不了回收站，系统会先弹警告，而不是悄悄删掉。
-- 一次超过 20 个，或总大小超过 1 GB（文件夹会估算大小），先在气泡里问"要吃掉吗？"。
-- 拒绝：盘符根目录、用户主目录本身、系统和程序目录（`SystemRoot`、`Program Files`、`ProgramData`、`/usr`、`/System` 等）、程序自身目录、不存在的路径。Rust 端会再检查一遍，不信任前端传来的数据。
-- 「吐出来」撤销上一次投喂：Windows / Linux 用 `trash::os_limited::restore_all`；macOS 不支持程序内还原，会提示去废纸篓"放回原处"。
-- 每次吃了什么都追加记录到 `<应用数据目录>/meals.log`（时间 + 原路径）。
-
-**资源管理器右键菜单「请一二删除 / 请布布删除 / 请一二布布删除」**（Windows，已实现）：
-
-- 注册在当前用户的注册表（`HKCU\Software\Classes\*\shell` 和 `Directory\shell`），不需要管理员权限。出现哪几项跟着当前显示的角色走（页面算好 `[{id, label}]` 交给 Rust）：两只都在 → 每只一项再加「请<组合名>删除」；只有一只 → 只有那一只。菜单里「资源管理器右键菜单」取消勾选即可全部移除。
-- 选中后 Explorer 运行 `Awu-Pet.exe --eat <角色 id|all> "<路径>"`（旧的 `both` 仍然认）。桌宠已经在运行时，由 `tauri-plugin-single-instance` 转交给正在运行的实例；多选文件时 Explorer 会逐个启动，桌宠把 400 ms 内的请求合并成一次"跑腿"。桌宠没运行时会自动启动，等页面加载好再执行。
-- 定位文件：用 Windows UI Automation 读取当前获得焦点的条目（资源管理器列表或桌面图标）的屏幕位置，并核对名字确实是这个文件；读不到时退回鼠标位置。
-- 动画：头顶冒 ❗、喊"收到！"→ 加速冲刺（步子更快、烟尘更密）跑到文件旁边（两只就一左一右）→ 张开大嘴 → 文件图标飞进嘴里、嚼 → 移进回收站 → 气泡"吃掉了 N 个" → 几秒后走回原来的位置。检查和确认规则与拖放投喂相同。
-- 注意：Windows 11 的新版右键菜单只显示通过 MSIX 包注册的命令，这里的条目在「显示更多选项」（经典菜单）里。以后要进新版菜单，需要做稀疏包 + `IExplorerCommand`。
-
-「清空回收站…」（右键菜单）：
-
-- 会**永久删除**回收站里的所有东西，所以必须先在熊的气泡里确认："回收站里有 N 个东西，全部清空吗？清空后就找不回来了" → [清空] [算了]。
-- Windows / Linux 用 `trash::os_limited::purge_all`；macOS 暂不支持，提示在废纸篓里清空。
-
-**(5) 其他**
-- ✅ 开机自启：`tauri-plugin-autostart`（菜单里开关，默认关）。
-- ⏳ 单实例：`tauri-plugin-single-instance`。
-- ⏳ 记住熊的位置；多显示器。
-- ✅ 关于 + 托盘提示：`Designed by 黄小B · Powered by noSugarK`。
-
-### 5.3 前后端接口
-
-| 方向 | 名称 | 说明 |
-|---|---|---|
-| JS → Rust | `set_hit_rects(rects)` | 熊和气泡的位置，用于点击穿透（变化时发送，最多 20 次/秒） |
-| JS → Rust | `check_meal(paths) -> {allowed, blocked, hasDirs, needsConfirm}` | 投喂前检查 |
-| JS → Rust | `eat_files(paths) -> 数量` | 移进回收站并记录 |
-| JS → Rust | `empty_trash() -> 数量` | 确认后清空回收站 |
-| JS → Rust | `menu_action(id)` / `autostart_enabled()` | 圆盘菜单里需要 Rust 执行的项；显示开机自启的勾选状态 |
-| JS → Rust | `sync_menu(settings)` | 启动时同步菜单勾选状态 |
-| Rust → JS | `cursor [x, y]` / `idle 秒数` | 全局光标（眼睛跟随）、系统空闲时间（离开电脑就睡觉） |
-| Rust → JS | `menu [id, checked]` | 菜单指令：`act:*`、`show:*`、`size:*`、`outfit:*`、`autoplay`、`about` |
-| Rust → JS | `notice 文本` / `ask_empty 数量` | 让熊说话；请求确认清空回收站 |
-| Tauri → JS | 拖放事件 `enter / over / drop / leave` | 张大嘴等待 / 吃掉 / 合上嘴 |
-| Rust → JS | `errand {who, paths, target}` | 资源管理器右键「请X帮你删除文件」：跑到文件位置吃掉 |
-| JS → Rust | `pet_ready()` | 页面加载完成，发送启动期间积压的跑腿请求 |
-
-### 5.4 渲染代码怎么共用（已完成）
-
-```text
-docs/
-  js/pet.js      # bearSVG()、LOOKS、状态机、移动引擎、粒子（无页面 UI）
-  css/pet.css    # 角色 + 动作样式
-  index.html     # 网站外壳：标题、按钮、页脚，引用上面两个文件
-  pet.html       # 桌宠外壳：透明背景、没有任何 UI，只有熊
-  js/desktop.js  # 桌宠专用桥接
-```
-
-`tauri.conf.json` 里 `build.frontendDist` 指向 `../../docs`，窗口加载 `pet.html`。
-
-### 5.5 构建与发布
-
-- 本地开发：安装 Rust stable + Tauri CLI（`cargo install tauri-cli --version "^2"`），在 `desktop/` 下运行 `cargo tauri dev`。
-- 发布：GitHub Actions 用 `tauri-apps/tauri-action`，打 tag `v*` 时构建 Windows（NSIS / MSI）、macOS（dmg，Intel + Apple Silicon）、Linux（AppImage / deb），上传到 Releases。网站的下载页链接到最新 Release。
-- 代码签名：Windows 没签名时会出现 SmartScreen 提示，macOS 没公证需要右键打开，第一版先在下载页写明。
-
-### 5.6 性能目标
+## 6. 性能目标
 
 - 空闲时 CPU < 1%，内存 < 80 MB。
-- 熊睡着或窗口被遮挡时降低刷新率：暂停 `requestAnimationFrame` 循环，只保留 CSS 动画。
+- 帧动画每秒 8 帧，只改 `background-position`；矢量角色用 CSS 动画；点击穿透的命中区域变化时才发给 Rust（最多 20 次/秒）。
 
 ---
 
-## 6. 里程碑
+## 7. 里程碑
 
-| 里程碑 | 内容 | 产出 |
-|---|---|---|
-| **M0**（已完成） | 互动网页：角色、移动、各类动作、道具、搭配 | `docs/index.html` |
-| **M1** | ✅ 拆出 `pet.js / pet.css`；⏳ 图鉴页、下载页；推到 GitHub，开启 Pages | 线上网站 |
-| **M2** | ✅ Tauri 桌宠：透明置顶窗口、点击穿透、站在任务栏上、托盘 / 右键菜单、隐藏到托盘、切换形象、大小 | 可运行的桌宠 |
-| **M3** | ✅ 自己玩、双熊互动、大嘴投喂进回收站 + 吐出来、清空回收站；⏳ 多显示器 | 功能完整的桌宠 |
-| **M4** | 自动更新、开机自启、节日 / 生日彩蛋、更多道具与服装、CI 发布三平台安装包 | v1.0 |
-
----
-
-## 7. 署名规范
-
-所有对外的界面都必须带上：
-
-```text
-Designed by 黄小B · Powered by noSugarK
-```
-
-| 位置 | 做法 |
+| 版本 | 内容 |
 |---|---|
-| 网站 | 每页页脚 + `<meta name="author">` |
-| 桌宠 | 关于窗口、托盘提示文字、安装包描述（`tauri.conf.json` 的 `bundle.copyright` / `longDescription`） |
-| 仓库 | README 顶部、本文档顶部、Release 说明 |
-
-版权说明（放在 README 和网站页脚）：
-
-> 一二、布布形象版权归原作者黄小B所有。本项目为非商业粉丝作品，未经授权不得用于商业用途；如权利人提出要求，将立即下架相关内容。
+| 0.1–0.3 | 互动网页；Tauri 桌宠：透明窗口、点击穿透、圆盘菜单、自己玩、投喂进回收站、资源管理器右键、按三视图重画一二布布 |
+| 下一版（0.4） | 改名 Awu Pet；角色可切换；宠物包（帧动画）与安装脚本；每只宠物自己的动作；最多 4 只同屏；多显示器 |
+| 以后 | 新版 Win11 右键菜单（稀疏包）、节日 / 生日彩蛋、网页上预览宠物包、代码签名 |
 
 ---
 
-## 8. 待你确认的问题
+## 8. 署名与版权
 
-1. ~~代码许可证~~：已定为 MIT（仅代码；形象版权始终归黄小B，见 LICENSE）。
-2. ~~仓库~~：[noSugarK/awu-pet](https://github.com/noSugarK/awu-pet)，先只发 Releases（`.github/workflows/release.yml`，推 `v*` tag 触发）。
-3. **是否向黄小B申请授权**：如果以后要公开分发桌宠安装包，建议先联系作者取得许可。
-4. **桌宠默认形态**：默认两只一起出现，还是只出现一只？
+| 角色 | 版权 | 署名 |
+|---|---|---|
+| 一二、布布 | 黄小B | 凡出现一二布布的界面都写 `Designed by 黄小B · Powered by noSugarK` |
+| 小白、小金毛 | 线条小狗 © moonlab_studio | 宠物包 `credit` |
+| 噜噜、噜妹 | 噜噜与噜妹 © 原作者（抖音） | 宠物包 `credit` |
+| 奶龙、奶蛙 | 奶龙 © 第七印象 | 宠物包 `credit` |
+
+- 网站：页脚 + `<meta name="author">`；桌宠：「关于」显示当前角色的署名 + `Powered by noSugarK`；安装包描述（`bundle.copyright` / `longDescription`）；README、本文档、Release 说明。
+- 宠物包精灵图版权归各自作者（littlegqqq、Petdex 投稿者），不随本项目分发。
+- 本项目为非商业粉丝作品，未经授权不得用于商业用途；如权利人提出要求，将立即下架相关内容。
 
 ---
 
 ## 参考资料
 
 - 一二（微信表情包形象）· 百度百科：https://baike.baidu.com/item/%E4%B8%80%E4%BA%8C/23434669
-- 全网最全【一二布布】动态表情包 · 知乎：https://zhuanlan.zhihu.com/p/557914631
-- Bubu Dudu GIFs · Tenor：https://tenor.com/search/bubu-dudu-gifs
-- Bubu Dudu Eating Ramen · Tenor：https://tenor.com/view/bubu-dudu-eating-bubu-dudu-ramen-bubu-ramen-dudu-ramen-bubu-dudu-date-gif-7052186152999366777
-- Bubu Dudu Flower Gift · Tenor：https://tenor.com/view/bubu-dudu-flower-gift-gif-26248513
-- Bubu Dudu GIFs · GIFDB：https://gifdb.com/bubu-dudu
-- littlegqqq/Yier-Bubu（Codex pet 精灵图）：https://github.com/littlegqqq/Yier-Bubu
-- Tauri v2 文档：https://v2.tauri.app/
+- Petdex（Codex 宠物图鉴，MIT 代码，宠物为用户投稿）：https://petdex.dev · https://github.com/crafter-station/petdex
+- littlegqqq/Yier-Bubu（一二、布布 Codex 宠物包）：https://github.com/littlegqqq/Yier-Bubu
+- Tauri v2：https://v2.tauri.app/
 - trash crate：https://crates.io/crates/trash
