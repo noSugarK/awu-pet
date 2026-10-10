@@ -114,7 +114,7 @@ function refreshRoster() {
   try { saved = JSON.parse(localStorage.getItem('roster')) || []; } catch { return; }
   const avail = available(), fresh = saved.map(e => (e.builtin
     ? avail.find(a => !a.builtin && a.name === YB.characters[e.builtin]?.name)
-    : avail.find(a => keyOf(a) === keyOf(e))) || e);
+    : avail.find(a => keyOf(a) === keyOf(e)) || avail.find(a => !a.builtin && a.name === e.name)) || e);
   if (JSON.stringify(fresh) !== JSON.stringify(saved)) setRoster(fresh);
 }
 

@@ -41,17 +41,18 @@ Awu Pet（原名 YierBubu-Pet）是一款桌面宠物。它们站在任务栏上
 
 右键宠物弹出**圆盘菜单**：按住右键往某个方向一划、松开即选；也可以松开后再点。
 
-## 安装宠物包（帧动画）
+## 宠物包（帧动画）
 
-桌宠能读取 Codex / Petdex 格式的宠物包（`pet.json` + 8×9 格的精灵图）。**软件和仓库里不带任何人的图**，宠物包由你自己装：
+桌宠能读取 Codex / Petdex 格式的宠物包（`pet.json` + 8×9 格的精灵图）。**安装程序自带**一二布布、小白和小金毛、噜噜和噜妹、奶龙、奶蛙（在 [`desktop/src-tauri/pets`](desktop/src-tauri/pets)；来源：[littlegqqq/Yier-Bubu](https://github.com/littlegqqq/Yier-Bubu) 和 Petdex 用户作品，作者写进每个 `pet.json`），装好就能在「角色」里选，一二布布默认就是帧动画版。
+
+更新这些宠物包（走代理的网络加 `NODE_USE_ENV_PROXY=1`，Node 24+）：
 
 ```bash
-node desktop/scripts/install-pets.mjs
+node desktop/scripts/install-pets.mjs                              # 装到自己电脑的宠物包文件夹，优先于自带的
+node desktop/scripts/install-pets.mjs --out desktop/src-tauri/pets # 更新安装程序自带的那份
 ```
 
-会装好一二布布、小白和小金毛、噜噜和噜妹、奶龙、奶蛙（来源：[littlegqqq/Yier-Bubu](https://github.com/littlegqqq/Yier-Bubu) 和 Petdex 用户作品，作者写进每个 `pet.json`，**仅供个人使用**）。走代理的网络加 `NODE_USE_ENV_PROXY=1`（Node 24+）。
-
-也可以：
+还可以：
 
 - 用 `npx petdex install <名字>` 装任意 Petdex 宠物（装在 `~/.codex/pets`，桌宠会自动找到）；
 - 右键「角色 ▸ 宠物包文件夹」，把宠物包文件夹放进去（一个文件夹里放两个宠物包就是一组）。
@@ -80,7 +81,8 @@ cd desktop && cargo tauri build
 |---|---|
 | `docs/` | 网站 + 桌宠共用的前端（矢量渲染、帧动画、动作、自主行为、圆盘菜单） |
 | `desktop/` | Rust + Tauri v2 桌宠：透明窗口、托盘、回收站、资源管理器菜单、宠物包、多显示器 |
-| `desktop/scripts/install-pets.mjs` | 安装宠物包 |
+| `desktop/src-tauri/pets/` | 安装程序自带的宠物包 |
+| `desktop/scripts/install-pets.mjs` | 下载 / 更新宠物包 |
 | `design/` | 参考图、三视图、多角色方案 |
 | `video/` | Remotion 宣传视频（`cd video && npm i && npm run render`） |
 
@@ -98,7 +100,7 @@ cd desktop && cargo tauri build
 
 - 一二、布布形象版权归原作者 **黄小B** 所有（Designed by 黄小B）。
 - 线条小狗（小白、小金毛）© moonlab_studio；奶龙 © 第七印象；噜噜与噜妹 © 原作者（抖音）。
-- 宠物包精灵图版权归各自作者所有，不随本项目分发。
+- 自带宠物包的精灵图版权归各自作者所有（littlegqqq、Petdex 投稿者，见各 `pet.json`），随本项目分发仅供非商业使用；作者或权利人要求时立即移除。
 
 本项目为非商业粉丝作品，未经授权不得用于商业用途；如权利人提出要求，将立即下架相关内容。
 

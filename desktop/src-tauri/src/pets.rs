@@ -2,7 +2,8 @@
 //! They live in our own pets folder (`<app data>/pets`) and in Codex's (`~/.codex/pets`, where
 //! `npx petdex install <name>` puts them). A folder holding one package is a solo cast; a folder holding
 //! two package folders (e.g. littlegqqq/Yier-Bubu's `pets/`) is a pair, named after that folder.
-//! We never ship anyone's art: desktop/scripts/install-pets.mjs fetches packages into our folder.
+//! The installer also ships a set of them (desktop/src-tauri/pets, a bundle resource; fetched with
+//! desktop/scripts/install-pets.mjs --out), looked at last: a package the user has with the same name wins.
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
@@ -41,6 +42,9 @@ fn roots(app: &AppHandle) -> Vec<PathBuf> {
     if let Some(home) = crate::feed::home() {
         roots.push(home.join(".codex").join("pets"));
     }
+    if let Ok(dir) = app.path().resource_dir() {
+        roots.push(dir.join("pets"));
+    }
     roots
 }
 
@@ -73,7 +77,7 @@ pub fn list_pets(app: AppHandle) -> Vec<Pack> {
                 }
                 None => (subdirs(&dir).iter().filter_map(|d| member(d)).take(2).collect(), folder.clone()),
             };
-            if members.is_empty() {
+            if members.is_empty() || packs.iter().any(|p: &Pack| p.name == name) {
                 continue;
             }
             let key = format!("{i}/{folder}");

@@ -42,6 +42,7 @@
     ],
     "copyright": "Designed by 黄小B · Powered by noSugarK",
     "category": "Entertainment",
+    "resources": { "pets/": "pets/" },
     "windows": {
       "nsis": { "installerHooks": "installer-hooks.nsh" }
     },

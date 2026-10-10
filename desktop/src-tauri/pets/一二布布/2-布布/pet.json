@@ -1,0 +1,46 @@
+{
+  "id": "bubu",
+  "displayName": "布布",
+  "description": "Bubu is a soft tan chibi bear with round ears, dark dot eyes, tiny w-mouth, yellow cheek blush, and small curled paws.",
+  "spritesheetPath": "spritesheet.webp",
+  "source": "https://github.com/littlegqqq/Yier-Bubu",
+  "credit": "Designed by 黄小B · 精灵图：littlegqqq/Yier-Bubu",
+  "awu": {
+    "actions": [
+      [
+        3,
+        "👋",
+        "挥手"
+      ],
+      [
+        4,
+        "🙌",
+        "欢呼"
+      ],
+      [
+        5,
+        "😭",
+        "哭哭"
+      ],
+      [
+        6,
+        "☺️",
+        "扭扭"
+      ],
+      [
+        7,
+        "🚶",
+        "踏步"
+      ],
+      [
+        8,
+        "🥺",
+        "撒娇"
+      ]
+    ],
+    "states": {
+      "shy": 8,
+      "dance": 7
+    }
+  }
+}

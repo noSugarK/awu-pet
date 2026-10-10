@@ -1,0 +1,46 @@
+{
+  "id": "nailong",
+  "displayName": "奶龙",
+  "description": "今夜星光闪闪 ，我爱你的心满满，想你一晚又一晚，把爱你的心都填满！",
+  "spritesheetPath": "spritesheet.webp",
+  "source": "https://petdex.dev/pets/nailong-4",
+  "credit": "奶龙 © 第七印象 · 精灵图：Petdex gang l.",
+  "awu": {
+    "actions": [
+      [
+        3,
+        "👋",
+        "挥手"
+      ],
+      [
+        4,
+        "🙌",
+        "欢呼"
+      ],
+      [
+        5,
+        "🥺",
+        "委屈"
+      ],
+      [
+        6,
+        "🤭",
+        "偷笑"
+      ],
+      [
+        7,
+        "💃",
+        "扭扭"
+      ],
+      [
+        8,
+        "🤔",
+        "托腮"
+      ]
+    ],
+    "states": {
+      "shy": 6,
+      "dance": 7
+    }
+  }
+}

@@ -112,7 +112,7 @@ Codex / [Petdex](https://petdex.dev) 宠物包：一个文件夹，含 `pet.json
 | 奶龙 | Petdex `nailong-4` | 挥手 · 欢呼 · 委屈 · 偷笑 · 扭扭 · 托腮 |
 | 奶蛙 | Petdex `nailong`（改名） | 挥手 · 欢呼 · 哭哭 · 蹦跶 · 扭扭 · 大笑 |
 
-**不分发别人的图。** 仓库和安装包里没有任何宠物包；`install-pets.mjs` 从 Petdex 公开目录（`assets.petdex.dev/manifests/petdex-v2.json`）和 GitHub 下载到用户自己的电脑，来源、作者和版权行写进 `pet.json`（`source`、`credit`），仅供个人使用。
+**自带宠物包。** `install-pets.mjs --out desktop/src-tauri/pets` 从 Petdex 公开目录（`assets.petdex.dev/manifests/petdex-v2.json`）和 GitHub 下载到仓库，作为 Tauri 资源（`bundle.resources`）打进安装程序；来源、作者和版权行写进 `pet.json`（`source`、`credit`）。Rust 依次找 `<应用数据>/pets`、`~/.codex/pets`、自带的 `pets`，同名的只取第一个，所以用户自己装的版本优先。第一次启动时，如果宠物包里有和内置矢量角色同名的（一二、布布），直接换成帧动画版。
 
 ### 2.3 选谁上场
 
@@ -245,7 +245,7 @@ Codex / [Petdex](https://petdex.dev) 宠物包：一个文件夹，含 `pet.json
 | 奶龙、奶蛙 | 奶龙 © 第七印象 | 宠物包 `credit` |
 
 - 网站：页脚 + `<meta name="author">`；桌宠：「关于」显示当前角色的署名 + `Powered by noSugarK`；安装包描述（`bundle.copyright` / `longDescription`）；README、本文档、Release 说明。
-- 宠物包精灵图版权归各自作者（littlegqqq、Petdex 投稿者），不随本项目分发。
+- 自带宠物包的精灵图版权归各自作者（littlegqqq、Petdex 投稿者），仅供非商业使用，权利人要求时立即移除。
 - 本项目为非商业粉丝作品，未经授权不得用于商业用途；如权利人提出要求，将立即下架相关内容。
 
 ---

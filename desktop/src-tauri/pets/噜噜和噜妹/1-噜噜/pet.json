@@ -1,0 +1,49 @@
+{
+  "id": "lulu",
+  "displayName": "噜噜",
+  "description": "一只软糯的黄色水豚噜噜，顶着小橘子，半眯眼但很会陪伴。",
+  "spritesheetPath": "spritesheet.webp",
+  "source": "https://petdex.dev/pets/lulu-3",
+  "credit": "噜噜与噜妹 © 原作者（抖音） · 精灵图：Petdex 5dehuiliyi",
+  "awu": {
+    "actions": [
+      [
+        3,
+        "👋",
+        "挥手"
+      ],
+      [
+        4,
+        "🙌",
+        "开心"
+      ],
+      [
+        5,
+        "😴",
+        "困了"
+      ],
+      [
+        6,
+        "🤭",
+        "摸肚子"
+      ],
+      [
+        7,
+        "🙅",
+        "抱臂"
+      ],
+      [
+        8,
+        "🤔",
+        "托腮"
+      ]
+    ],
+    "states": {
+      "sleep": 5,
+      "sad": 7,
+      "angry": 7,
+      "shy": 6,
+      "dance": 4
+    }
+  }
+}

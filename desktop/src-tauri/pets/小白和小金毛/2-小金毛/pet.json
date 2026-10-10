@@ -1,0 +1,49 @@
+{
+  "id": "xiao-jimao",
+  "displayName": "小金毛",
+  "description": "用用户提供素材整合的奶黄小狗 Codex 桌宠。",
+  "spritesheetPath": "spritesheet.webp",
+  "source": "https://petdex.dev/pets/xiao-jimao",
+  "credit": "线条小狗 © moonlab_studio · 精灵图：Petdex 鲁宁 严.",
+  "awu": {
+    "flipRunning": true,
+    "actions": [
+      [
+        3,
+        "✨",
+        "闪闪"
+      ],
+      [
+        4,
+        "🎈",
+        "爱心气球"
+      ],
+      [
+        5,
+        "😭",
+        "哭哭"
+      ],
+      [
+        6,
+        "💕",
+        "比心"
+      ],
+      [
+        7,
+        "🪑",
+        "坐长椅"
+      ],
+      [
+        8,
+        "❓",
+        "疑惑"
+      ]
+    ],
+    "states": {
+      "hug": 6,
+      "dance": 6,
+      "happy": 3,
+      "wave": 6
+    }
+  }
+}

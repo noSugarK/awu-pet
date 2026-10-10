@@ -1,4 +1,5 @@
-// Fetches the community pet packages Awu Pet uses into its pets folder (the app ships none of them).
+// Fetches the community pet packages Awu Pet uses into its pets folder, or with --out <dir> anywhere
+// (the installer ships them from desktop/src-tauri/pets: node desktop/scripts/install-pets.mjs --out desktop/src-tauri/pets).
 // Each set is a folder; one with two package folders inside is a pair (a 角色 menu entry named after the folder).
 // Run: node desktop/scripts/install-pets.mjs   (Node 18+; re-run to update; --dry-run prints the plan)
 //      behind a proxy (HTTPS_PROXY set): NODE_USE_ENV_PROXY=1 node desktop/scripts/install-pets.mjs   (Node 24+)
@@ -38,7 +39,8 @@ const ID = 'com.nosugark.yierbubupet';
 const appData = process.platform === 'win32' ? join(process.env.APPDATA, ID)
   : process.platform === 'darwin' ? join(homedir(), 'Library', 'Application Support', ID)
   : join(process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), ID);
-const PETS = join(appData, 'pets');
+const out = process.argv.indexOf('--out');
+const PETS = out > 0 ? process.argv[out + 1] : join(appData, 'pets');
 const dry = process.argv.includes('--dry-run');
 
 async function get(url, as = 'json') {
