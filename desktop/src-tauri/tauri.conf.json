@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "YierBubu-Pet",
-  "mainBinaryName": "YierBubu-Pet",
+  "productName": "Awu-Pet",
+  "mainBinaryName": "Awu-Pet",
   "version": "0.3.0",
   "identifier": "com.nosugark.yierbubupet",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "YierBubu-Pet",
+        "title": "Awu Pet",
         "url": "pet.html",
         "width": 800,
         "height": 600,
@@ -42,7 +42,10 @@
     ],
     "copyright": "Designed by 黄小B · Powered by noSugarK",
     "category": "Entertainment",
-    "shortDescription": "YierBubu-Pet · 一二和布布住进你的桌面：会陪你玩，还会帮你“吃掉”文件。",
-    "longDescription": "YierBubu-Pet 是一款以一二和布布为主角的桌面宠物。它们站在你的任务栏上，眼睛跟着鼠标转，没人理时自己散步、吃面、喝奶茶、跳舞、抱抱，你离开电脑就趴下睡觉。它们还是会吃文件的回收站：把文件拖到熊身上，或者在资源管理器里右键「请一二删除」，它们就会跑过去张开大嘴吃掉——文件进系统回收站，随时可以找回。Designed by 黄小B · Powered by noSugarK。形象版权归原作者所有，本软件为非商业粉丝作品。"
+    "windows": {
+      "nsis": { "installerHooks": "installer-hooks.nsh" }
+    },
+    "shortDescription": "Awu Pet · 嗷呜桌宠：住在任务栏上的桌宠，会陪你玩，还会帮你“嗷呜”一口吃掉文件。",
+    "longDescription": "Awu Pet（嗷呜桌宠）是一款桌面宠物，默认角色是一二和布布，可以在右键菜单里切换角色。它们站在你的任务栏上，眼睛跟着鼠标转，没人理时自己散步、吃面、喝奶茶、跳舞、抱抱，你离开电脑就趴下睡觉。它们还是会吃文件的回收站：把文件拖到它们身上，或者在资源管理器里右键「请一二删除」，它们就会跑过去张开大嘴吃掉——文件进系统回收站，随时可以找回。一二、布布 Designed by 黄小B · Powered by noSugarK。形象版权归原作者所有，本软件为非商业粉丝作品。"
   }
 }

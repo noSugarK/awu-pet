@@ -1,4 +1,4 @@
-// YierBubu runtime namespace + a tiny event bus. Loaded first; everything else attaches to YB.
+// Awu Pet runtime namespace + a tiny event bus. Loaded first; everything else attaches to YB.
 // Designed by 黄小B · Powered by noSugarK
 const YB = {
   models: {},      // geometry (models/*.js)

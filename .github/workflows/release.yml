@@ -1,4 +1,4 @@
-# Builds YierBubu-Pet for Windows / macOS / Linux and publishes the installers to GitHub Releases.
+# Builds Awu Pet for Windows / macOS / Linux and publishes the installers to GitHub Releases.
 # Trigger: push a tag like v0.1.0 (the tag must match "version" in desktop/src-tauri/tauri.conf.json).
 name: Release
 
@@ -52,11 +52,11 @@ jobs:
           tauriScript: npx --yes @tauri-apps/cli@^2
           args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}
-          releaseName: YierBubu-Pet ${{ github.ref_name }}
+          releaseName: Awu Pet ${{ github.ref_name }}
           releaseDraft: false
           prerelease: false
           releaseBody: |
-            **YierBubu-Pet · 一二布布桌宠** —— 一二和布布住进你的桌面：会陪你玩，还会帮你“吃掉”文件。
+            **Awu Pet · 嗷呜桌宠** —— 一二和布布住进你的桌面：会陪你玩，还会帮你“吃掉”文件。
 
             - 站在任务栏上，眼睛跟着鼠标，按性格自己散步、吃面、跳舞、抱抱，夜里犯困，离开电脑就趴下睡觉
             - 两只会互相戳醒、追着玩；全屏打游戏 / 看视频时自动躲到角落

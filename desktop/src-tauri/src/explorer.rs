@@ -13,12 +13,12 @@ pub struct Verb {
 
 /// Registry keys are `<PREFIX>.<who>`; keys under older prefixes are removed so no stale entries remain.
 #[cfg(windows)]
-const PREFIX: &str = "YierBubu-Pet";
+const PREFIX: &str = "Awu-Pet";
 #[cfg(windows)]
-const ALL_PREFIXES: [&str; 2] = ["YierBubu-Pet.", "YierBubu."];
+const ALL_PREFIXES: [&str; 3] = ["Awu-Pet.", "YierBubu-Pet.", "YierBubu."];
 
 /// Registers `verbs` on files and folders, removing every other entry of ours.
-/// Explorer then runs `YierBubu-Pet.exe --eat <who> "<path>"` (once per selected item).
+/// Explorer then runs `Awu-Pet.exe --eat <who> "<path>"` (once per selected item).
 #[cfg(windows)]
 pub fn set_menu(verbs: &[Verb]) -> std::io::Result<()> {
     use winreg::{

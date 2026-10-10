@@ -1,4 +1,4 @@
-// YierBubu-Pet (一二布布桌宠) · Designed by 黄小B · Powered by noSugarK
+// Awu Pet (嗷呜桌宠) · 一二、布布 Designed by 黄小B · Powered by noSugarK
 //
 // One transparent overlay window covers the work area; the bears are drawn by the shared web runtime
 // in docs/. Rust makes the window click-through except over the bears, tells the page what the computer
@@ -340,6 +340,21 @@ fn sync_menu(app: AppHandle, settings: Settings, menus: State<Menus>, shared: St
     }
 }
 
+/// Builds from before the rename registered autostart as "YierBubu-Pet"; carry that setting over to the new name.
+#[cfg(windows)]
+fn migrate_autostart(app: &AppHandle) {
+    use winreg::{
+        enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS},
+        RegKey,
+    };
+    let run = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(r"Software\Microsoft\Windows\CurrentVersion\Run", KEY_ALL_ACCESS);
+    if run.is_ok_and(|run| run.delete_value("YierBubu-Pet").is_ok()) {
+        let _ = app.autolaunch().enable();
+    }
+}
+#[cfg(not(windows))]
+fn migrate_autostart(_: &AppHandle) {}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| handle_args(app, &argv)))
@@ -360,6 +375,7 @@ fn main() {
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+            migrate_autostart(&handle);
             app.manage(build_menus(&handle)?);
             let win = app.get_webview_window("main").expect("main window");
             // cover the work area of the primary monitor (the bears walk along its bottom edge = the taskbar top)
@@ -371,7 +387,7 @@ fn main() {
             win.set_ignore_cursor_events(true)?;
             TrayIconBuilder::with_id("tray")
                 .icon(app.default_window_icon().cloned().expect("app icon"))
-                .tooltip("YierBubu-Pet")
+                .tooltip("Awu Pet")
                 .menu(&app.state::<Menus>().tray)
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(|tray, event| {

@@ -116,7 +116,7 @@ function handleMenu(id) {
   const [kind, arg] = id.split(':');
   if (kind === 'act') return PET.run(arg);
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
-  if (id === 'about') return sayAny(`YierBubu-Pet · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
+  if (id === 'about') return sayAny(`Awu Pet · 嗷呜桌宠 · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
   if (kind === 'cast' && arg !== PET.cast.id) {
     settings.show = PET.casts[arg].members;
     save();
