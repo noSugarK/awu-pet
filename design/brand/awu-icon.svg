@@ -1,0 +1,61 @@
+<!-- Awu Pet app icon: a round little creature going "嗷呜" on a file. Original artwork for this project.
+     Source for desktop/src-tauri/icon-source.png (1024 px) and docs/img/icon.png. Powered by noSugarK -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE3BA"/>
+      <stop offset="1" stop-color="#FFB877"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#FFF1DF"/>
+    </linearGradient>
+    <clipPath id="mouth">
+      <path d="M268 560 C268 520 346 500 512 500 C678 500 756 520 756 560 C756 708 650 820 512 820 C374 820 268 708 268 560 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- tile -->
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#tile)"/>
+  <ellipse cx="512" cy="900" rx="300" ry="38" fill="#C9772F" opacity=".22"/>
+
+  <g stroke="#3A2317" stroke-width="30" stroke-linejoin="round" stroke-linecap="round">
+    <!-- ears -->
+    <circle cx="300" cy="262" r="78" fill="url(#body)"/>
+    <circle cx="724" cy="262" r="78" fill="url(#body)"/>
+    <circle cx="300" cy="262" r="36" fill="#FFB3A7" stroke="none"/>
+    <circle cx="724" cy="262" r="36" fill="#FFB3A7" stroke="none"/>
+    <!-- round body -->
+    <path d="M512 212 C756 212 872 372 872 556 C872 760 724 884 512 884 C300 884 152 760 152 556 C152 372 268 212 512 212 Z" fill="url(#body)"/>
+
+    <!-- happy eyes ^ ^ -->
+    <path d="M330 432 Q372 374 414 432" fill="none"/>
+    <path d="M610 432 Q652 374 694 432" fill="none"/>
+
+    <!-- the big "嗷呜" mouth -->
+    <path d="M268 560 C268 520 346 500 512 500 C678 500 756 520 756 560 C756 708 650 820 512 820 C374 820 268 708 268 560 Z" fill="#7A2620"/>
+  </g>
+
+  <!-- inside the mouth: tongue and the file being eaten -->
+  <g clip-path="url(#mouth)">
+    <ellipse cx="512" cy="800" rx="190" ry="110" fill="#F2787A"/>
+    <path d="M512 742 L512 800" stroke="#C94F55" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-14 560 560)">
+      <path d="M430 470 L640 470 L690 520 L690 690 L430 690 Z" fill="#FFFFFF" stroke="#3A2317" stroke-width="22" stroke-linejoin="round"/>
+      <path d="M640 470 L640 520 L690 520" fill="#E6EEF8" stroke="#3A2317" stroke-width="18" stroke-linejoin="round"/>
+      <path d="M470 560 L640 560 M470 610 L610 610" stroke="#8FB3DA" stroke-width="20" stroke-linecap="round"/>
+    </g>
+  </g>
+  <!-- the mouth outline again over the file, and two front teeth biting it -->
+  <path d="M268 560 C268 520 346 500 512 500 C678 500 756 520 756 560 C756 708 650 820 512 820 C374 820 268 708 268 560 Z" fill="none" stroke="#3A2317" stroke-width="30" stroke-linejoin="round"/>
+  <g fill="#FFFFFF" stroke="#3A2317" stroke-width="16" stroke-linejoin="round">
+    <path d="M452 508 L452 560 Q452 578 470 578 L494 578 Q510 578 510 560 L510 508 Z"/>
+    <path d="M514 508 L514 560 Q514 578 530 578 L554 578 Q572 578 572 560 L572 508 Z"/>
+  </g>
+
+  <!-- cheeks -->
+  <ellipse cx="236" cy="520" rx="58" ry="40" fill="#FF9E8E" opacity=".75"/>
+  <ellipse cx="788" cy="520" rx="58" ry="40" fill="#FF9E8E" opacity=".75"/>
+  <!-- a little sparkle: it's delighted -->
+  <path d="M830 330 L846 372 L888 388 L846 404 L830 446 L814 404 L772 388 L814 372 Z" fill="#FFFFFF" stroke="#3A2317" stroke-width="14" stroke-linejoin="round"/>
+</svg>
