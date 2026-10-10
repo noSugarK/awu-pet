@@ -9,7 +9,7 @@ const p = (b, trait) => b.ch.personality[trait];
 
 // solo activities: weight(b) → how likely this bear picks it now
 const SOLO = [
-  { w: b => 4 * (.5 + p(b, 'playfulness')), go: b => { const a = config.walkArea(), r = rect(b); return moveTo(b, rand(a.x0, a.x1 - r.width), rand(a.y0, Math.max(a.y0, a.y1 - r.height)), 150); } },
+  { w: b => 4 * (.5 + p(b, 'playfulness')), go: b => { const a = config.walkArea(b), r = rect(b); return moveTo(b, rand(a.x0, a.x1 - r.width), rand(a.y0, Math.max(a.y0, a.y1 - r.height)), 150); } },
   { w: () => 1, go: b => setState(b, 'think', 3500) },
   { w: b => b.ch.sprite ? 0 : p(b, 'playfulness'), go: b => setState(b, 'noodle', 4000) },
   { w: b => b.ch.sprite ? 0 : p(b, 'playfulness'), go: b => setState(b, 'boba', 4000) },
@@ -36,7 +36,7 @@ const pick = list => {
 
 // one runs off, the other follows a few times, then they bump into each other happily
 async function chase(runner, chaser) {
-  const a = config.walkArea();
+  const a = config.walkArea(runner);
   for (let i = 0; i < 3; i++) {
     const r = rect(runner), x = rand(a.x0, a.x1 - r.width), y = rand(a.y0, Math.max(a.y0, a.y1 - r.height));
     setState(runner, 'happy'); setState(chaser, 'happy');

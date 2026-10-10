@@ -8,7 +8,7 @@ const config = {
   autoplay: true,
   sparkTrail: true,
   rememberPosition: false,
-  // where bears wander on their own and where they start (viewport px)
+  // where a bear wanders on its own (viewport px; the shell may answer per bear, e.g. its monitor) and where they start
   walkArea: () => ({ x0: 0, x1: innerWidth, y0: innerHeight * .2, y1: innerHeight * .7 }),
   home: () => ({ x: innerWidth / 2, y: innerHeight / 2 }),
 };

@@ -12,16 +12,39 @@ let settings = DEFAULTS;
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') }; } catch {}
 const save = () => { try { localStorage.setItem('settings', JSON.stringify(settings)); } catch {} };
 
-// bears live on the taskbar: start bottom-right, wander along the bottom edge, remember where they were left
+// bears live on the taskbars: the window spans every monitor and Rust says where each one's work area is
+// (x, y, w, h, primary first); a bear starts bottom-right of the primary one and wanders along the bottom edge of
+// whichever monitor it is on; it is remembered where it was left
 const bearH = () => PET.rect(PET.bears[0]).height;
+let screens = [[0, 0, innerWidth, innerHeight]];
+const screenOf = b => { // the monitor holding the bear's centre, else the nearest one
+  if (!b) return screens[0];
+  const r = PET.rect(b), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  const gap = ([sx, sy, w, h]) => Math.hypot(Math.max(sx - x, 0, x - sx - w), Math.max(sy - y, 0, y - sy - h));
+  return screens.reduce((a, s) => gap(s) < gap(a) ? s : a);
+};
 Object.assign(PET.config, {
   sparkTrail: false,
   sleepAfter: 90000,
   playAfter: 15000,
   rememberPosition: true,
-  home: () => ({ x: innerWidth - bearH() * 2, y: innerHeight - bearH() / 2 }),
-  walkArea: () => ({ x0: 0, x1: innerWidth, y0: innerHeight - bearH(), y1: innerHeight }),
+  home: () => { const [x, y, w, h] = screens[0]; return { x: x + w - bearH() * 2, y: y + h - bearH() / 2 }; },
+  walkArea: b => { const [x, y, w, h] = screenOf(b); return { x0: x, x1: x + w, y0: y + h - bearH(), y1: y + h }; },
 });
+// keep a bear on a monitor: one dropped (or left, before a monitor was unplugged) between screens goes to the nearest
+function onScreen(b) {
+  const [x, y, w, h] = screenOf(b), r = PET.rect(b);
+  const nx = Math.min(Math.max(b.x, x), x + w - r.width), ny = Math.min(Math.max(b.y, y), y + h - r.height);
+  if (nx !== b.x || ny !== b.y) YB.rt.moveTo(b, nx, ny, 500);
+}
+function setScreens(list) {
+  if (!list?.length) return;
+  screens = list;
+  PET.bears.forEach(onScreen);
+}
+invoke('screen_areas').then(setScreens);
+listen('screens', e => setScreens(e.payload));
+YB.on('dropped', onScreen);
 
 // 角色 menu (radial + tray): every character once — the built-in ones and the members of the pet packages found on
 // disk (Rust's list_pets) — ticked when on screen; picking one adds it or takes it away (see packs.js), up to MAX

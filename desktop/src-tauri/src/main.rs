@@ -37,8 +37,47 @@ struct Rect {
 
 struct Shared {
     hit_rects: Mutex<Vec<Rect>>,
-    on_top: AtomicBool,     // the user's 置顶 setting
-    fullscreen: AtomicBool, // a fullscreen app is in front: step back behind it
+    on_top: AtomicBool,           // the user's 置顶 setting
+    fullscreen: AtomicBool,       // a fullscreen app is in front: step back behind it
+    screens: Mutex<Vec<[f64; 4]>>, // each monitor's work area in page px (x, y, w, h), the primary one first
+}
+
+// ---------- every monitor: the overlay spans them all, the page walks along each one's taskbar ----------
+
+/// Each monitor's work area (physical px: x, y, w, h), the primary one first.
+fn work_areas(win: &WebviewWindow) -> Vec<(i32, i32, u32, u32)> {
+    let primary = win.primary_monitor().ok().flatten().map(|m| *m.position());
+    let mut list: Vec<_> = win.available_monitors().unwrap_or_default().iter()
+        .map(|m| { let a = m.work_area(); (Some(*m.position()) != primary, (a.position.x, a.position.y, a.size.width, a.size.height)) })
+        .collect();
+    list.sort_by_key(|(secondary, _)| *secondary);
+    list.into_iter().map(|(_, a)| a).collect()
+}
+
+/// Covers the bounding box of all work areas and tells the page where each one is. Returns what it covered.
+fn cover_screens(win: &WebviewWindow, shared: &Shared) -> Vec<(i32, i32, u32, u32)> {
+    let areas = work_areas(win);
+    if areas.is_empty() {
+        return areas;
+    }
+    let x0 = areas.iter().map(|a| a.0).min().unwrap_or(0);
+    let y0 = areas.iter().map(|a| a.1).min().unwrap_or(0);
+    let x1 = areas.iter().map(|a| a.0 + a.2 as i32).max().unwrap_or(0);
+    let y1 = areas.iter().map(|a| a.1 + a.3 as i32).max().unwrap_or(0);
+    let _ = win.set_position(tauri::PhysicalPosition::new(x0, y0));
+    let _ = win.set_size(tauri::PhysicalSize::new((x1 - x0) as u32, (y1 - y0) as u32));
+    // ponytail: one scale factor for the whole window; monitors with different scaling get slightly off areas
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let page: Vec<[f64; 4]> = areas.iter().map(|a| [(a.0 - x0) as f64 / scale, (a.1 - y0) as f64 / scale, a.2 as f64 / scale, a.3 as f64 / scale]).collect();
+    *shared.screens.lock().unwrap() = page.clone();
+    let _ = win.emit("screens", page);
+    areas
+}
+
+/// The work areas as the page last heard them (it asks once it has loaded).
+#[tauri::command]
+fn screen_areas(shared: State<Shared>) -> Vec<[f64; 4]> {
+    shared.screens.lock().unwrap().clone()
 }
 
 // ---------- the overlay: click-through, cursor, idle, fullscreen ----------
@@ -69,9 +108,14 @@ fn watch(app: AppHandle, win: WebviewWindow) {
         let mut last = (f64::NAN, f64::NAN);
         let own = own_handle(&win);
         let mut fs_seen = 0; // consecutive fullscreen samples; one blip doesn't count
+        let mut covered = work_areas(&win);
         for tick in 0u64.. {
             thread::sleep(Duration::from_millis(16));
             let shared = app.state::<Shared>();
+            // a monitor plugged in, removed or rearranged: cover the new layout
+            if tick % 120 == 0 && work_areas(&win) != covered {
+                covered = cover_screens(&win, &shared);
+            }
             if tick % 60 == 0 {
                 if let Ok(idle) = user_idle::UserIdle::get_time() {
                     let _ = win.emit("idle", idle.as_seconds());
@@ -362,7 +406,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| handle_args(app, &argv)))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
-        .manage(Shared { hit_rects: Mutex::default(), on_top: AtomicBool::new(true), fullscreen: AtomicBool::new(false) })
+        .manage(Shared { hit_rects: Mutex::default(), on_top: AtomicBool::new(true), fullscreen: AtomicBool::new(false), screens: Mutex::default() })
         .manage(Errands::default())
         .manage(feed::LastMeal::default())
         .on_menu_event(on_menu)
@@ -376,7 +420,8 @@ fn main() {
             autostart_enabled,
             pet_ready,
             pets::list_pets,
-            pets::read_pet_sheet
+            pets::read_pet_sheet,
+            screen_areas
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -384,11 +429,8 @@ fn main() {
             app.manage(build_menus(&handle)?);
             let win = app.get_webview_window("main").expect("main window");
             // cover the work area of the primary monitor (the bears walk along its bottom edge = the taskbar top)
-            if let Some(monitor) = win.primary_monitor()? {
-                let area = monitor.work_area();
-                win.set_position(area.position)?;
-                win.set_size(area.size)?;
-            }
+            // cover every monitor's work area (the bears walk along each one's bottom edge = its taskbar top)
+            cover_screens(&win, &app.state::<Shared>());
             win.set_ignore_cursor_events(true)?;
             TrayIconBuilder::with_id("tray")
                 .icon(app.default_window_icon().cloned().expect("app icon"))
