@@ -23,30 +23,46 @@ Object.assign(PET.config, {
   walkArea: () => ({ x0: 0, x1: innerWidth, y0: innerHeight - bearH(), y1: innerHeight }),
 });
 
-// 角色 menu (radial + tray): every cast — the built-in ones and the pet packages found on disk (Rust's list_pets) —
-// and, for a pair, each of the two on their own ("<cast>#<index>"); then the folder where pet packages go
+// 角色 menu (radial + tray): every character once — the built-in ones and the members of the pet packages found on
+// disk (Rust's list_pets) — ticked when on screen; picking one adds it or takes it away (see packs.js), up to MAX
 const visible = () => PET.bears.filter(b => !b.hidden);
-const PACK_IDS = ['pet-a', 'pet-b']; // the character ids packs.js gives a package's members
+const MAX = 4;
 let packs = [];
-function roles() {
-  const { cast } = PET, on = visible().map(b => b.id), out = [];
-  const add = (id, icon, name, members, current) => { // members: [[character id, name]]
-    out.push({ id, icon, label: name, checked: current && on.length === members.length });
-    if (members.length > 1) members.forEach(([cid, n], i) => out.push({ id: `${id}#${i}`, icon, label: n, checked: current && on.length === 1 && on[0] === cid }));
-  };
-  // a built-in cast whose name a package also has (e.g. 一二布布 drawn from frames) gives way to the package
-  for (const c of Object.values(PET.casts).filter(c => c.id !== 'pack' && !packs.some(p => p.name === c.name)))
-    add('cast:' + c.id, c.icon, c.name, c.members.map(id => [id, YB.characters[id].name]), c === cast);
-  for (const p of packs)
-    add('pack:' + p.key, '🐾', p.name, p.members.map((m, i) => [PACK_IDS[i], m.name]), cast.id === 'pack' && cast.key === p.key);
-  out.push({ id: 'open_pets', icon: '📂', label: '宠物包文件夹', checked: false });
-  return out;
+const keyOf = e => e.builtin ? 'b:' + e.builtin : `p:${e.key}#${e.index}`;
+// everyone who can be picked; a built-in character a package also has (e.g. 一二 drawn from frames) gives way to it
+function available() {
+  const fromPacks = packs.flatMap(p => p.members.map((m, index) => ({ key: p.key, index, name: m.name, sheet: m.sheet, credit: m.credit })));
+  const names = new Set(fromPacks.map(e => e.name));
+  return [...Object.values(YB.characters).filter(ch => !ch.sprite && !names.has(ch.name)).map(ch => ({ builtin: ch.id })), ...fromPacks];
 }
-// Explorer's "请X删除" entries follow who is shown; 'all' sends the whole cast
+// who is on screen now, as roster entries; a built-in character that a package also has counts as the package one
+function current() {
+  let list = visible().map(b => ({ builtin: b.id }));
+  // the same filter packs.js used, so entries line up with PET.bears
+  if (PET.cast.id === 'roster') try { list = JSON.parse(localStorage.getItem('roster')).filter(r => r.builtin ? YB.characters[r.builtin] : r.sheet).filter((e, i) => !PET.bears[i]?.hidden); } catch {}
+  const avail = available();
+  return list.map(e => e.builtin && avail.find(a => !a.builtin && a.name === YB.characters[e.builtin].name) || e);
+}
+function roles() {
+  const on = new Set(current().map(keyOf));
+  const icon = e => e.builtin ? Object.values(PET.casts).find(c => c.members.includes(e.builtin))?.icon : '🐾';
+  return [
+    ...available().map(e => ({ id: 'pick:' + keyOf(e), icon: icon(e), label: e.name || YB.characters[e.builtin].name, checked: on.has(keyOf(e)) })),
+    { id: 'open_pets', icon: '📂', label: '宠物包文件夹', checked: false },
+  ];
+}
+function setRoster(list) {
+  try { localStorage.setItem('roster', JSON.stringify(list)); } catch {}
+  settings.show = []; // everyone in the roster is shown
+  save();
+  PET.setCast('roster');
+}
+// Explorer's "请X删除" entries follow who is shown; 'all' sends everyone
 function eaters() {
   if (!settings.explorerMenu) return [];
   const list = visible().map(b => ({ id: b.id, label: `请${b.ch.name}删除` }));
-  return list.length > 1 ? [...list, { id: 'all', label: `请${PET.cast.name}删除` }] : list;
+  const all = list.length > 2 ? '请大家一起删除' : `请${visible().map(b => b.ch.name).join('和')}删除`;
+  return list.length > 1 ? [...list, { id: 'all', label: all }] : list;
 }
 
 function apply() {
@@ -65,8 +81,10 @@ invoke('list_pets').then(p => { packs = p; apply(); });
 for (const b of PET.bears.filter(b => b.ch.sprite)) {
   invoke('read_pet_sheet', { path: b.ch.sprite.sheet })
     .then(bytes => PET.setSprite(b.id, URL.createObjectURL(new Blob([bytes]))))
-    .catch(() => { // the package was moved or deleted: back to the built-in cast
-      try { localStorage.removeItem('pack'); } catch {}
+    .catch(() => { // the package was moved or deleted: drop that character (or go back to the built-in cast)
+      const rest = current().filter(e => e.sheet !== b.ch.sprite.sheet);
+      if (rest.length) return setRoster(rest);
+      try { localStorage.removeItem('roster'); } catch {}
       settings.show = DEFAULTS.show;
       save();
       PET.setCast(Object.keys(PET.casts)[0]);
@@ -141,18 +159,13 @@ function handleMenu(id) {
   if (kind === 'act') return PET.run(arg);
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
   if (id === 'about') return sayAny(`Awu Pet · 嗷呜桌宠 · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
-  // 角色: "cast:<id>" / "pack:<key>" shows the whole cast, a "#<index>" suffix just that member
-  if (kind === 'cast' || kind === 'pack') {
-    const ref = id.slice(5), m = ref.match(/^(.*)#(\d)$/), key = m ? m[1] : ref, index = m ? +m[2] : null;
-    const pack = kind === 'pack' && packs.find(p => p.key === key);
-    if (kind === 'pack' && !pack) return;
-    const members = pack ? PACK_IDS.slice(0, pack.members.length) : PET.casts[key].members;
-    settings.show = index === null ? members : [members[index]];
-    save();
-    const current = pack ? PET.cast.id === 'pack' && PET.cast.key === key : PET.cast.id === key;
-    if (current) return apply();
-    if (pack) try { localStorage.setItem('pack', JSON.stringify(pack)); } catch {} // packs.js builds the characters from it
-    return PET.setCast(pack ? 'pack' : key);
+  // 角色: "pick:<key>" puts that character on screen or takes it away
+  if (kind === 'pick') {
+    const k = id.slice(5), now = current(), on = now.some(e => keyOf(e) === k), entry = available().find(e => keyOf(e) === k);
+    if (on && now.length === 1) return sayAny('至少要留一只陪你哦');
+    if (!on && now.length >= MAX) return sayAny(`最多同时 ${MAX} 只哦\n先让一只回去休息吧`);
+    if (!on && !entry) return;
+    return setRoster(on ? now.filter(e => keyOf(e) !== k) : [...now, entry]);
   }
   if (kind === 'size') settings.size = +arg;
   else if (TOGGLES[id]) settings[TOGGLES[id]] = !settings[TOGGLES[id]];

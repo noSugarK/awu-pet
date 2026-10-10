@@ -1,21 +1,24 @@
-// The pet package picked in the 角色 menu (desktop, see platform/desktop.js): a Codex / Petdex package of 1–2
-// members, saved as { key, name, members: [{ name, sheet }] }. Each member becomes a character drawn from its
-// sprite sheet's frames instead of the SVG renderer; the shell loads the sheet images once the page is up.
+// Who is on screen, picked one by one in the 角色 menu (desktop, see platform/desktop.js): up to 4 characters,
+// mixing built-in ones and members of Codex / Petdex pet packages. Saved as a list of
+//   { builtin: '<character id>' }  or  { key, index, name, sheet, credit }  (a package member)
+// Package members become characters drawn from their sprite sheet's frames; the shell loads the sheets.
 (() => {
-  let pack;
-  try { pack = JSON.parse(localStorage.getItem('pack') || 'null'); } catch {}
-  if (!pack?.members?.length) return;
-  const ids = pack.members.map((_, i) => 'pet-' + 'ab'[i]);
-  pack.members.forEach((mb, i) => {
-    const partner = pack.members[1 - i];
+  let roster;
+  try { roster = JSON.parse(localStorage.getItem('roster') || 'null'); } catch {}
+  roster = (roster || []).filter(r => r.builtin ? YB.characters[r.builtin] : r.sheet);
+  if (!roster.length) return;
+  const ids = roster.map((r, i) => r.builtin || 'pet-' + i), names = ids.map((id, i) => roster[i].name || YB.characters[id]?.name);
+  roster.forEach((r, i) => {
+    if (r.builtin) return;
+    const partner = names[(i + 1) % names.length];
     YB.character({
-      id: ids[i], name: mb.name, sprite: { sheet: mb.sheet },
+      id: ids[i], name: r.name, sprite: { sheet: r.sheet },
       accessories: [], fx: ['♥', '♡'], fxColor: '#ff6b8a',
       personality: { sleepiness: .5, playfulness: .75, social: .8 },
-      lines: partner ? { callPartner: partner.name + '！' } : {},
+      lines: roster.length > 1 ? { callPartner: partner + '！' } : {},
     });
   });
-  // credit: what the package says (install-pets.mjs writes it), else a generic line
-  const credit = [...new Set(pack.members.map(m => m.credit).filter(Boolean))].join('\n') || '社区宠物包 · 形象版权归原作者所有';
-  YB.cast({ id: 'pack', key: pack.key, name: pack.name, icon: '🐾', members: ids, credit });
+  // credits: each package says its own (install-pets.mjs writes them); built-in ones come from their cast
+  const credits = roster.map(r => r.builtin ? Object.values(YB.casts).find(c => c.members.includes(r.builtin))?.credit : r.credit || '社区宠物包 · 形象版权归原作者所有');
+  YB.cast({ id: 'roster', name: names.length > 2 ? '大家' : names.join('和'), icon: '🐾', members: ids, credit: [...new Set(credits.filter(Boolean))].join('\n') });
 })();

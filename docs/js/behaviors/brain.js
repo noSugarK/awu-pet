@@ -69,8 +69,8 @@ function play(now) {
   const idle = shown().filter(free);
   const napper = shown().find(b => b.state === 'sleep' && !activity.manualSleep);
   if (napper && idle.length && Math.random() < .5) poke(idle[0], napper);
-  else if (idle.length === 2 && Math.random() < .45) {
-    const [a, b] = idle;
+  else if (idle.length >= 2 && Math.random() < .45) {
+    const [a, b] = idle.sort(() => Math.random() - .5); // any two of them
     pick(DUO.map(d => ({ ...d, weight: d.w(a, b) }))).go(a, b);
   } else if (idle.length) {
     const b = idle[Math.random() * idle.length | 0];

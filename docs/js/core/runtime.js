@@ -279,7 +279,8 @@ function layout() {
   if (config.rememberPosition) try { saved = JSON.parse(localStorage.getItem('positions:' + cast.id) ?? localStorage.getItem('positions') ?? 'null'); } catch {}
   if (saved && bears.every(b => saved[b.id])) return bears.forEach(b => setPos(b, ...saved[b.id]));
   const r = rect(bears[0]), h = config.home();
-  bears.forEach((b, i) => setPos(b, h.x + r.width * (i ? .05 : -1.05), h.y - r.height / 2));
+  // side by side, centred on home (two of them: just left and right of it)
+  bears.forEach((b, i) => setPos(b, h.x + r.width * (1.1 * (i - (bears.length - 1) / 2) - .5), h.y - r.height / 2));
 }
 addEventListener('resize', () => {
   // page may load in a hidden/zero-size viewport, which piles the bears in a corner
