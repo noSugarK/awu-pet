@@ -9,7 +9,7 @@
   <a href="desktop/src-tauri/tauri.conf.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FnoSugarK%2Fawu-pet%2Fmain%2Fdesktop%2Fsrc-tauri%2Ftauri.conf.json&query=%24.version&label=version&color=orange" alt="当前版本"></a>
   <a href="https://github.com/noSugarK/awu-pet/stargazers"><img src="https://img.shields.io/github/stars/noSugarK/awu-pet?style=flat&logo=github" alt="Stars"></a>
   <a href="https://github.com/noSugarK/awu-pet/releases"><img src="https://img.shields.io/github/downloads/noSugarK/awu-pet/total?label=downloads" alt="下载量"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/noSugarK/awu-pet" alt="MIT"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT（仅代码）"></a>
   <br>
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational" alt="Windows · macOS · Linux">
   <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri&logoColor=white" alt="Tauri v2">
