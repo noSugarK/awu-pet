@@ -344,7 +344,7 @@ Designed by 黄小B · Powered by noSugarK
 ## 8. 待你确认的问题
 
 1. ~~代码许可证~~：已定为 MIT（仅代码；形象版权始终归黄小B，见 LICENSE）。
-2. ~~仓库~~：[noSugarK/yierbubu-pet](https://github.com/noSugarK/yierbubu-pet)，先只发 Releases（`.github/workflows/release.yml`，推 `v*` tag 触发）。
+2. ~~仓库~~：[noSugarK/awu-pet](https://github.com/noSugarK/awu-pet)，先只发 Releases（`.github/workflows/release.yml`，推 `v*` tag 触发）。
 3. **是否向黄小B申请授权**：如果以后要公开分发桌宠安装包，建议先联系作者取得许可。
 4. **桌宠默认形态**：默认两只一起出现，还是只出现一只？
 

@@ -35,7 +35,7 @@ for (const id of ['glasses', 'scarf']) {
 // each one links straight to its installer in that release (asset names contain the version).
 (async () => {
   try {
-    const res = await fetch('https://api.github.com/repos/noSugarK/yierbubu-pet/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+    const res = await fetch('https://api.github.com/repos/noSugarK/awu-pet/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
     if (!res.ok) return;
     const release = await res.json();
     document.querySelector('.dl-version').textContent = release.tag_name;

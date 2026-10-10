@@ -10,7 +10,7 @@ Awu Pet（嗷呜桌宠）是一款桌面宠物，默认角色是一二和布布�
 
 
 
-- **下载桌宠**：[GitHub Releases](https://github.com/noSugarK/yierbubu-pet/releases)（Windows / macOS / Linux）
+- **下载桌宠**：[GitHub Releases](https://github.com/noSugarK/awu-pet/releases)（Windows / macOS / Linux）
 - **互动网页**：[`docs/index.html`](docs/index.html)，直接用浏览器打开即可；部署在 GitHub Pages。
 - **桌宠软件**：`desktop/`（Rust + Tauri v2）。可切换形象，没人理的时候自己玩，还能把文件拖给它"吃掉"（移到系统回收站，可找回）。
 - **宣传视频**：`video/`（Remotion），横版 1920×1080 + 竖版 1080×1920，`cd video && npm i && npm run render` 输出到 `video/out/`。
