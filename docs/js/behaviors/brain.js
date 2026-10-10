@@ -11,8 +11,10 @@ const p = (b, trait) => b.ch.personality[trait];
 const SOLO = [
   { w: b => 4 * (.5 + p(b, 'playfulness')), go: b => { const a = config.walkArea(), r = rect(b); return moveTo(b, rand(a.x0, a.x1 - r.width), rand(a.y0, Math.max(a.y0, a.y1 - r.height)), 150); } },
   { w: () => 1, go: b => setState(b, 'think', 3500) },
-  { w: b => p(b, 'playfulness'), go: b => setState(b, 'noodle', 4000) },
-  { w: b => p(b, 'playfulness'), go: b => setState(b, 'boba', 4000) },
+  { w: b => b.ch.sprite ? 0 : p(b, 'playfulness'), go: b => setState(b, 'noodle', 4000) },
+  { w: b => b.ch.sprite ? 0 : p(b, 'playfulness'), go: b => setState(b, 'boba', 4000) },
+  // a sprite pet plays one of its own actions (rows of its sheet)
+  { w: b => b.ch.sprite ? 2.5 : 0, go: b => { const list = b.ch.sprite.actions; setState(b, 'row' + list[Math.random() * list.length | 0][0], 3600); } },
   { w: b => p(b, 'social'), go: b => A.wave(b) },
   { w: b => p(b, 'playfulness'), go: b => { jump(b); setState(b, 'happy', 1200); } },
   // a nap; at night much more likely

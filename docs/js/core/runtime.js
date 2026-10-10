@@ -53,8 +53,12 @@ async function setSprite(id, url) {
   Object.assign(b.sheet, { cols, rows, frames });
   Object.assign(b.sprite.style, { backgroundImage: `url("${url}")`, backgroundSize: `${cols * 100}% ${rows * 100}%` });
 }
+// the row for what the pet is doing: "row<N>" states (an action picked from its menu) play that row; a pet may say
+// which rows suit its states (sprite.states) and that its running rows are swapped (sprite.flip)
 function spriteFrame(b, now, running) {
-  const row = running ? (b.dir < 0 ? ROW.left : ROW.right) : b.el.classList.contains('wave') ? ROW.wave : ROW[STATE_ROW[b.state] || 'idle'];
+  const sp = b.ch.sprite, picked = /^row(\d)$/.exec(b.state), mood = b.el.classList.contains('wave') ? 'wave' : b.state;
+  const row = running ? ((b.dir < 0) !== !!sp.flip ? ROW.left : ROW.right)
+    : picked ? +picked[1] : sp.states?.[mood] ?? ROW[mood === 'wave' ? 'wave' : STATE_ROW[mood] || 'idle'];
   const { cols, rows, frames } = b.sheet;
   if (!frames) return;
   const r = Math.min(row, rows - 1), f = Math.floor(now / 1000 * SPRITE_FPS) % (frames[r] || 1);

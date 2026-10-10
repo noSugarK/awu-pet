@@ -14,6 +14,7 @@ const PET = (() => {
     can: A.can,
     bears: rt.bears,
     run: A.run,
+    playRow: A.playRow,
     outfit: A.outfit,
     show: A.show,
     setSize: A.setSize,

@@ -14,6 +14,7 @@ struct Manifest {
     display_name: Option<String>,
     spritesheet_path: Option<String>,
     credit: Option<String>, // written by desktop/scripts/install-pets.mjs: who owns the character, who drew the frames
+    awu: Option<serde_json::Value>, // also written by it: action names, rows for states, swapped running rows
 }
 
 #[derive(Serialize)]
@@ -21,6 +22,7 @@ pub struct Member {
     name: String,
     sheet: PathBuf,
     credit: Option<String>,
+    awu: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -54,7 +56,7 @@ fn member(dir: &Path) -> Option<Member> {
     let m: Manifest = serde_json::from_slice(&std::fs::read(dir.join("pet.json")).ok()?).ok()?;
     let sheet = dir.join(m.spritesheet_path.as_deref().unwrap_or("spritesheet.webp"));
     let fallback = dir.file_name()?.to_string_lossy().into_owned();
-    sheet.is_file().then(|| Member { name: m.display_name.or(m.id).unwrap_or(fallback), sheet, credit: m.credit })
+    sheet.is_file().then(|| Member { name: m.display_name.or(m.id).unwrap_or(fallback), sheet, credit: m.credit, awu: m.awu })
 }
 
 #[tauri::command]

@@ -31,7 +31,7 @@ let packs = [];
 const keyOf = e => e.builtin ? 'b:' + e.builtin : `p:${e.key}#${e.index}`;
 // everyone who can be picked; a built-in character a package also has (e.g. 一二 drawn from frames) gives way to it
 function available() {
-  const fromPacks = packs.flatMap(p => p.members.map((m, index) => ({ key: p.key, index, name: m.name, sheet: m.sheet, credit: m.credit })));
+  const fromPacks = packs.flatMap(p => p.members.map((m, index) => ({ key: p.key, index, name: m.name, sheet: m.sheet, credit: m.credit, awu: m.awu })));
   const names = new Set(fromPacks.map(e => e.name));
   return [...Object.values(YB.characters).filter(ch => !ch.sprite && !names.has(ch.name)).map(ch => ({ builtin: ch.id })), ...fromPacks];
 }
@@ -75,7 +75,15 @@ function apply() {
   invoke('sync_menu', { settings: { ...settings, roles: roles(), eaters: eaters() } });
 }
 apply();
-invoke('list_pets').then(p => { packs = p; apply(); });
+invoke('list_pets').then(p => { packs = p; apply(); refreshRoster(); });
+// packages may have been re-installed (new names, actions…): keep the saved roster's copies in step, reloading once
+function refreshRoster() {
+  if (PET.cast.id !== 'roster') return;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem('roster')) || []; } catch { return; }
+  const avail = available(), fresh = saved.map(e => e.builtin ? e : avail.find(a => keyOf(a) === keyOf(e)) || e);
+  if (JSON.stringify(fresh) !== JSON.stringify(saved)) setRoster(fresh);
+}
 
 // characters from a pet package: their sheets come from the package files, through Rust
 for (const b of PET.bears.filter(b => b.ch.sprite)) {
@@ -120,12 +128,18 @@ addEventListener('pointerdown', async e => {
   // only what the cast on screen can do (a lone character has nobody to hug or dance with)
   const act = (name, icon, label) => PET.can(name) && leaf('act:' + name, icon, label);
   const cat = (icon, label, kids) => (kids = kids.filter(Boolean)).length > 0 && { icon, label, children: kids };
+  // a pet drawn from frames offers its own actions (named after what its sheet shows); the others the usual ones
+  const pet = PET.bears.find(b => b.el === e.target.closest('.bear')), sp = pet?.ch.sprite;
+  const moves = sp
+    ? [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('dance', '🎵', '跳舞')]),
+       cat('✨', pet.ch.name, [...sp.actions.map(([row, icon, label]) => leaf(`row:${pet.id}:${row}`, icon, label)), act('sleep', '💤', '睡觉')])]
+    : [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('wave', '👋', '挥手'), act('dance', '🎵', '跳舞'), act('shy', '😊', '害羞'), act('rose', '🌹', '送花')]),
+       cat('💭', '动作', [act('think', '💭', '思考'), act('sleep', '💤', '睡觉'), act('noodle', '🍜', '吃面'), act('boba', '🧋', '奶茶')])];
   YB.radial.open({
     x: e.clientX, y: e.clientY,
     items: [
       cat('🔄', '角色', roles()),
-      cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('wave', '👋', '挥手'), act('dance', '🎵', '跳舞'), act('shy', '😊', '害羞'), act('rose', '🌹', '送花')]),
-      cat('💭', '动作', [act('think', '💭', '思考'), act('sleep', '💤', '睡觉'), act('noodle', '🍜', '吃面'), act('boba', '🧋', '奶茶')]),
+      ...moves,
       PET.can('outfit') && cat('🕶️', '装扮', [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')]),
       cat('🍪', '投喂', [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出来')]),
       cat('🗑️', '回收站', [leaf('open_trash', '📂', '打开'), leaf('empty_trash', '🧹', '清空')]),
@@ -157,6 +171,7 @@ const TOGGLES = { 'outfit:glasses': 'glasses', 'outfit:scarf': 'scarf', autoplay
 function handleMenu(id) {
   const [kind, arg] = id.split(':');
   if (kind === 'act') return PET.run(arg);
+  if (kind === 'row') { const [, who, row] = id.split(':'); return PET.playRow(who, +row); }
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
   if (id === 'about') return sayAny(`Awu Pet · 嗷呜桌宠 · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
   // 角色: "pick:<key>" puts that character on screen or takes it away

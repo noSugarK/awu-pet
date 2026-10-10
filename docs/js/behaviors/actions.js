@@ -60,6 +60,13 @@ const flat = () => !shown().some(b => b.ch.sprite);
 const needs = { dance: duo, hug: duo, rose: () => duo() && flat() && shown().some(b => b.ch.giver), noodle: flat, boba: flat, outfit: flat };
 const can = name => !needs[name] || needs[name]();
 function run(name) { interact(); wake(true); return all[name]?.(); }
+// a sprite pet's own action: play one row of its sheet for a while
+function playRow(id, row, ms = 3600) {
+  const b = byId(id);
+  if (!b?.ch.sprite) return;
+  interact(); wake(true);
+  setState(b, 'row' + row, ms);
+}
 
 // dropping a bear next to its partner = hug
 YB.on('dropped', b => {
@@ -164,5 +171,5 @@ async function helper(b) {
   return o;
 }
 
-return { all, can, run, hug, wave, outfit, show, setSize, bearAt, hungry, eat, errand, helper };
+return { all, can, run, playRow, hug, wave, outfit, show, setSize, bearAt, hungry, eat, errand, helper };
 })();
