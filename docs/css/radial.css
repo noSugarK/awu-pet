@@ -13,3 +13,6 @@
 .radial .hub { fill: #fffaf4; stroke: rgba(58, 35, 23, .55); stroke-width: 2; }
 .radial .hub.on { fill: #fde0c4; }
 .radial .hub-text { font-size: 15px; opacity: .55; }
+.radial .hint { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); margin-bottom: 4px; padding: 3px 10px; border-radius: 999px;
+  background: rgba(58, 35, 23, .8); color: #fff8ef; font: 12px "ZCOOL KuaiLe", "Microsoft YaHei", system-ui, sans-serif; white-space: nowrap; pointer-events: none; }
+.radial .hint:empty { display: none; }

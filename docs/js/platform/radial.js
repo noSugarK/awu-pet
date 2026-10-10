@@ -1,6 +1,7 @@
 // Radial (marking) menu: hold the right button, flick toward an item and release to pick it;
 // or release first and then click. Hovering a category opens its children on an outer ring.
-//   YB.radial.open({ x, y, items: [{ id, icon, label, checked?, children? }], onPick(id) })
+//   YB.radial.open({ x, y, items: [{ id, icon, label, checked?, children?, hint? }], onPick(id, { add }) })
+// add: Ctrl or Shift was held while picking; a category's hint shows above the menu while its ring is open
 YB.radial = (() => {
 const R0 = 34, R1 = 112, R2 = 186;      // ring radii: dead zone, categories, children
 const CHILD_SPAN = 26;                   // degrees per child on the outer ring
@@ -30,7 +31,9 @@ function open({ x, y, items, onPick, gesture = true }) {
   el.style.top = y + 'px';
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('viewBox', `${-R2 - 4} ${-R2 - 4} ${2 * R2 + 8} ${2 * R2 + 8}`);
-  el.append(svg);
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  el.append(svg, hint);
   document.body.append(el);
 
   const node = (tag, attrs, parent = svg) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent.append(n); return n; };
@@ -52,6 +55,7 @@ function open({ x, y, items, onPick, gesture = true }) {
 
   function showKids(c) {
     outer.replaceChildren();
+    hint.textContent = c?.hint || '';
     menu.kids = [];
     if (!c?.children) return;
     const n = c.children.length, a0 = c.a - (n - 1) * CHILD_SPAN / 2;
@@ -76,11 +80,11 @@ function open({ x, y, items, onPick, gesture = true }) {
     menu.kids.forEach(k => k.g.classList.toggle('on', k === kid));
     hub.classList.toggle('on', !cat);
   };
-  menu.pick = () => {
+  menu.pick = e => {
     const hit = menu.kid || (menu.cat && !menu.cat.children ? menu.cat : null);
     if (!hit) return false;
     close();
-    onPick(hit.id);
+    onPick(hit.id, { add: !!(e?.ctrlKey || e?.shiftKey) });
     return true;
   };
   requestAnimationFrame(() => el.classList.add('shown'));
@@ -92,11 +96,11 @@ function close() { menu?.el.remove(); menu = null; }
 addEventListener('pointermove', e => menu?.track(e.clientX, e.clientY), true);
 addEventListener('pointerup', e => {
   if (!menu) return;
-  if (e.button === 2 && menu.gesture) { menu.gesture = false; if (menu.moved) menu.pick(); return; }
+  if (e.button === 2 && menu.gesture) { menu.gesture = false; if (menu.moved) menu.pick(e); return; }
   if (e.button !== 0) return;
   if (Math.hypot(e.clientX - menu.x, e.clientY - menu.y) > R2 + 10) return close(); // clicked outside
   menu.track(e.clientX, e.clientY);
-  if (!menu.pick() && !menu.cat) close();
+  if (!menu.pick(e) && !menu.cat) close();
 }, true);
 addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 

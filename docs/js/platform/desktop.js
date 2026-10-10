@@ -150,7 +150,7 @@ addEventListener('pointerdown', async e => {
   const leaf = (id, icon, label) => ({ id, icon, label, checked: on[id] });
   // only what the cast on screen can do (a lone character has nobody to hug or dance with)
   const act = (name, icon, label) => PET.can(name) && leaf('act:' + name, icon, label);
-  const cat = (icon, label, kids) => (kids = kids.filter(Boolean)).length > 0 && { icon, label, children: kids };
+  const cat = (icon, label, kids, hint) => (kids = kids.filter(Boolean)).length > 0 && { icon, label, children: kids, hint };
   // a pet drawn from frames offers its own actions (named after what its sheet shows); the others the usual ones
   const pet = PET.bears.find(b => b.el === e.target.closest('.bear')), sp = pet?.ch.sprite;
   // rows past the 9 Codex ones (newer sheets have more) are actions too
@@ -164,7 +164,7 @@ addEventListener('pointerdown', async e => {
   YB.radial.open({
     x: e.clientX, y: e.clientY,
     items: [
-      cat('🔄', '角色', roles()),
+      cat('🔄', '角色', roles(), '点击：换成它 · 按住 Ctrl 或 Shift 点击：添加或移除（最多 4 只）'),
       ...moves,
       PET.can('outfit') && cat('🕶️', '装扮', [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')]),
       cat('🍪', '投喂', [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出来')]),
@@ -173,7 +173,7 @@ addEventListener('pointerdown', async e => {
       leaf('toggle', '🙈', '隐藏'),
       leaf('about', 'ℹ️', '关于'),
     ].filter(Boolean),
-    onPick: id => (RUST_ITEMS.has(id) ? invoke('menu_action', { id }) : handleMenu(id)),
+    onPick: (id, mods) => (RUST_ITEMS.has(id) ? invoke('menu_action', { id }) : handleMenu(id, mods)),
   });
   sendHitRects(); // take the whole window right away so a fast flick isn't lost
 });
@@ -194,15 +194,17 @@ addEventListener('wheel', e => {
 // --- menu commands from Rust ---
 const sayAny = (text, ms = 4000) => { const b = visible()[0]; if (b) PET.say(b, text, { ms }); };
 const TOGGLES = { 'outfit:glasses': 'glasses', 'outfit:scarf': 'scarf', autoplay: 'autoplay', on_top: 'onTop', explorer_menu: 'explorerMenu' };
-function handleMenu(id) {
+function handleMenu(id, { add = false } = {}) { // add: Ctrl / Shift held (radial menu only)
   const [kind, arg] = id.split(':');
   if (kind === 'act') return PET.run(arg);
   if (kind === 'row') { const [, who, row] = id.split(':'); return PET.playRow(who, row === 'any' ? undefined : +row); }
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
   if (id === 'about') return sayAny(`Awu Pet · 嗷呜桌宠 · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
   // 角色: "pick:<key>" puts that character on screen or takes it away
+  // 角色: a plain pick switches to that character; with Ctrl / Shift it is added or taken away
   if (kind === 'pick') {
     const k = id.slice(5), now = current(), on = now.some(e => keyOf(e) === k), entry = available().find(e => keyOf(e) === k);
+    if (!add) return entry && !(on && now.length === 1) && setRoster([entry]);
     if (on && now.length === 1) return sayAny('至少要留一只陪你哦');
     if (!on && now.length >= MAX) return sayAny(`最多同时 ${MAX} 只哦\n先让一只回去休息吧`);
     if (!on && !entry) return;
