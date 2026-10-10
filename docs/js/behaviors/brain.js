@@ -22,7 +22,7 @@ const SOLO = [
 const DUO = [
   { w: (a, b) => 1.5 * p(a, 'social') * p(b, 'playfulness'), go: () => A.all.dance() },
   { w: (a, b) => 1.5 * p(a, 'social'), go: () => A.all.hug() },
-  { w: () => .6, go: () => A.all.rose() },
+  { w: () => A.can('rose') ? .6 : 0, go: () => A.all.rose() },
   { w: () => .8, go: () => shown().forEach(b => setState(b, 'shy', 3000)) },
   { w: (a, b) => p(a, 'playfulness') * p(b, 'playfulness'), go: (a, b) => chase(a, b) },
 ];

@@ -1,5 +1,5 @@
 // YierBubu-Pet public API for the platform shells (platform/web.js, platform/desktop.js).
-// Load order: core/yb.js → models/*.js → characters/*.js → core/render.js → core/runtime.js
+// Load order: core/yb.js → models/*.js → characters/*.js → casts.js → core/render.js → core/runtime.js
 //             → behaviors/feeding.js → behaviors/actions.js → behaviors/brain.js → pet.js → platform/*.js
 // Designed by 黄小B · Powered by noSugarK
 const PET = (() => {
@@ -7,6 +7,10 @@ const PET = (() => {
   rt.start(); // lays out on the next frame, after the shell has adjusted rt.config
   return {
     config: rt.config,
+    cast: rt.cast,
+    casts: YB.casts,
+    setCast: rt.setCast,
+    can: A.can,
     bears: rt.bears,
     run: A.run,
     outfit: A.outfit,

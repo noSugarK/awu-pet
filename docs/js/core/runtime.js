@@ -1,4 +1,4 @@
-// Pet runtime: creates the bears from YB.characters and runs state, movement, particles, bubbles,
+// Pet runtime: creates the bears of the current cast and runs state, movement, particles, bubbles,
 // dragging and the animation loop. Behaviors (actions.js, brain.js) build on YB.rt.
 YB.rt = (() => {
 // knobs a platform shell may override (platform/web.js, platform/desktop.js)
@@ -13,7 +13,14 @@ const config = {
   home: () => ({ x: innerWidth / 2, y: innerHeight / 2 }),
 };
 
-const bears = Object.values(YB.characters).map(ch => {
+// the cast on screen: the one a shell's 角色 menu saved (setCast), else the first registered
+const cast = (() => { let id; try { id = localStorage.getItem('cast'); } catch {} return YB.casts[id] || Object.values(YB.casts)[0]; })();
+function setCast(id) {
+  try { localStorage.setItem('cast', id); } catch {}
+  location.reload(); // every module holds on to the bears, so a fresh page is the simplest swap
+}
+
+const bears = cast.members.map(id => YB.characters[id]).map(ch => {
   const el = document.createElement('div');
   const m = YB.models[ch.model];
   el.className = 'bear';
@@ -223,11 +230,11 @@ bears.forEach(b => {
 // --- positions survive restarts when the shell asks for it (desktop) ---
 function savePositions() {
   if (!config.rememberPosition) return;
-  try { localStorage.setItem('positions', JSON.stringify(Object.fromEntries(bears.map(b => [b.id, [b.x, b.y]])))); } catch {}
+  try { localStorage.setItem('positions:' + cast.id, JSON.stringify(Object.fromEntries(bears.map(b => [b.id, [b.x, b.y]])))); } catch {}
 }
 function layout() {
   let saved = null;
-  if (config.rememberPosition) try { saved = JSON.parse(localStorage.getItem('positions') || 'null'); } catch {}
+  if (config.rememberPosition) try { saved = JSON.parse(localStorage.getItem('positions:' + cast.id) ?? localStorage.getItem('positions') ?? 'null'); } catch {}
   if (saved && bears.every(b => saved[b.id])) return bears.forEach(b => setPos(b, ...saved[b.id]));
   const r = rect(bears[0]), h = config.home();
   bears.forEach((b, i) => setPos(b, h.x + r.width * (i ? .05 : -1.05), h.y - r.height / 2));
@@ -292,7 +299,7 @@ function start() {
   requestAnimationFrame(() => { layout(); requestAnimationFrame(loop); });
 }
 
-return { config, bears, byId, shown, other, rect, center, clamp, rand, sleep, baseState, free, setState, refresh, setPos, moveTo,
+return { config, cast, setCast, bears, byId, shown, other, rect, center, clamp, rand, sleep, baseState, free, setState, refresh, setPos, moveTo,
   burst, flyInto, puff, jump, say, hush, mouse, activity, interact, wake, trackMouse, poke, savePositions, layout, start,
   dragging: () => !!drag, dragged: () => drag?.b };
 })();

@@ -1,35 +1,46 @@
-//! Windows Explorer integration: the "请一二删除" right-click entries (per-user registry, no admin)
-//! and finding where the chosen file sits on screen so the bears can run to it.
+//! Windows Explorer integration: the "请X删除" right-click entries (per-user registry, no admin)
+//! and finding where the chosen file sits on screen so the pets can run to it.
+use serde::Deserialize;
 use std::path::Path;
 
-/// (registry key, menu text, who) — which ones are registered follows the pet's 显示 setting.
-pub const VERBS: [(&str, &str, &str); 3] = [
-    ("YierBubu-Pet.yier", "请一二删除", "yier"),
-    ("YierBubu-Pet.bubu", "请布布删除", "bubu"),
-    ("YierBubu-Pet.both", "请一二布布删除", "both"),
-];
-/// Keys written by builds from before the rename; removed so no stale entries remain.
-const OLD_KEYS: [&str; 3] = ["YierBubu.yier", "YierBubu.bubu", "YierBubu.both"];
+/// One "请X删除" entry: `who` is a character id or `all`; the page decides which exist (who is shown).
+#[derive(Deserialize)]
+#[cfg_attr(not(windows), allow(dead_code))]
+pub struct Verb {
+    id: String,
+    label: String,
+}
 
-/// Registers the entries for `who` on files and folders, removing the others.
+/// Registry keys are `<PREFIX>.<who>`; keys under older prefixes are removed so no stale entries remain.
+#[cfg(windows)]
+const PREFIX: &str = "YierBubu-Pet";
+#[cfg(windows)]
+const ALL_PREFIXES: [&str; 2] = ["YierBubu-Pet.", "YierBubu."];
+
+/// Registers `verbs` on files and folders, removing every other entry of ours.
 /// Explorer then runs `YierBubu-Pet.exe --eat <who> "<path>"` (once per selected item).
 #[cfg(windows)]
-pub fn set_menu(who: &[&str]) -> std::io::Result<()> {
-    use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+pub fn set_menu(verbs: &[Verb]) -> std::io::Result<()> {
+    use winreg::{
+        enums::{HKEY_CURRENT_USER, KEY_READ},
+        RegKey,
+    };
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let exe = std::env::current_exe()?.display().to_string();
     for base in [r"Software\Classes\*\shell", r"Software\Classes\Directory\shell"] {
-        for key in OLD_KEYS {
-            let _ = hkcu.delete_subkey_all(format!(r"{base}\{key}"));
+        if let Ok(shell) = hkcu.open_subkey_with_flags(base, KEY_READ) {
+            let ours: Vec<String> = shell.enum_keys().flatten().filter(|k| ALL_PREFIXES.iter().any(|p| k.starts_with(p))).collect();
+            for key in ours {
+                let _ = hkcu.delete_subkey_all(format!(r"{base}\{key}"));
+            }
         }
-        for (key, text, id) in VERBS {
-            let path = format!(r"{base}\{key}");
-            let _ = hkcu.delete_subkey_all(&path);
-            if !who.contains(&id) {
+        for Verb { id, label } in verbs {
+            // ids go into a registry path and a command line: plain ids only
+            if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
                 continue;
             }
-            let (verb, _) = hkcu.create_subkey(&path)?;
-            verb.set_value("", &text)?;
+            let (verb, _) = hkcu.create_subkey(format!(r"{base}\{PREFIX}.{id}"))?;
+            verb.set_value("", label)?;
             verb.set_value("Icon", &exe)?;
             verb.set_value("MultiSelectModel", &"Player")?; // stay visible when many items are selected
             let (cmd, _) = verb.create_subkey("command")?;
@@ -54,7 +65,7 @@ fn notify_shell() {
 }
 
 #[cfg(not(windows))]
-pub fn set_menu(_: &[&str]) -> std::io::Result<()> {
+pub fn set_menu(_: &[Verb]) -> std::io::Result<()> {
     Ok(())
 }
 

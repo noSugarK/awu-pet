@@ -7,7 +7,7 @@ const { invoke } = T.core;
 const { listen } = T.event;
 
 // --- settings live in the webview's localStorage; Rust only mirrors them in the menus ---
-const DEFAULTS = { show: ['yier', 'bubu'], size: 180, glasses: false, scarf: false, autoplay: true, onTop: true, explorerMenu: true };
+const DEFAULTS = { show: PET.cast.members, size: 180, glasses: false, scarf: false, autoplay: true, onTop: true, explorerMenu: true };
 let settings = DEFAULTS;
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') }; } catch {}
 const save = () => { try { localStorage.setItem('settings', JSON.stringify(settings)); } catch {} };
@@ -23,13 +23,30 @@ Object.assign(PET.config, {
   walkArea: () => ({ x0: 0, x1: innerWidth, y0: innerHeight - bearH(), y1: innerHeight }),
 });
 
+// 角色 menu (radial + tray): every cast, plus "only X" for each member of a two-member cast
+const visible = () => PET.bears.filter(b => !b.hidden);
+function roles() {
+  const { cast } = PET, all = visible().length === cast.members.length;
+  return [
+    ...Object.values(PET.casts).map(c => ({ id: 'cast:' + c.id, icon: c.icon, label: c.name, checked: c === cast && all })),
+    ...(cast.members.length > 1 ? cast.members.map(id => ({ id: 'show:' + id, icon: cast.icon, label: '只有' + YB.characters[id].name, checked: !all && visible()[0]?.id === id })) : []),
+  ];
+}
+// Explorer's "请X删除" entries follow who is shown; 'all' sends the whole cast
+function eaters() {
+  if (!settings.explorerMenu) return [];
+  const list = visible().map(b => ({ id: b.id, label: `请${b.ch.name}删除` }));
+  return list.length > 1 ? [...list, { id: 'all', label: `请${PET.cast.name}删除` }] : list;
+}
+
 function apply() {
   PET.setSize(settings.size);
-  PET.show(settings.show);
+  const ids = settings.show.filter(id => PET.cast.members.includes(id)); // saved while another cast was on
+  PET.show(ids.length ? ids : PET.cast.members);
   PET.outfit('glasses', settings.glasses);
   PET.outfit('scarf', settings.scarf);
   PET.config.autoplay = settings.autoplay;
-  invoke('sync_menu', { settings });
+  invoke('sync_menu', { settings: { ...settings, roles: roles(), eaters: eaters() } });
 }
 apply();
 
@@ -58,18 +75,22 @@ addEventListener('pointerdown', async e => {
   const on = { 'outfit:glasses': settings.glasses, 'outfit:scarf': settings.scarf, on_top: settings.onTop,
     autoplay: settings.autoplay, explorer_menu: settings.explorerMenu, autostart };
   const leaf = (id, icon, label) => ({ id, icon, label, checked: on[id] });
+  // only what the cast on screen can do (a lone character has nobody to hug or dance with)
+  const act = (name, icon, label) => PET.can(name) && leaf('act:' + name, icon, label);
+  const cat = (icon, label, kids) => (kids = kids.filter(Boolean)).length > 0 && { icon, label, children: kids };
   YB.radial.open({
     x: e.clientX, y: e.clientY,
     items: [
-      { icon: '🤗', label: '互动', children: [leaf('act:hug', '🤗', '抱抱'), leaf('act:wave', '👋', '挥手'), leaf('act:dance', '🎵', '跳舞'), leaf('act:shy', '😊', '害羞'), leaf('act:rose', '🌹', '送花')] },
-      { icon: '💭', label: '动作', children: [leaf('act:think', '💭', '思考'), leaf('act:sleep', '💤', '睡觉'), leaf('act:noodle', '🍜', '吃面'), leaf('act:boba', '🧋', '奶茶')] },
-      { icon: '🕶️', label: '装扮', children: [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')] },
-      { icon: '🍪', label: '投喂', children: [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出来')] },
-      { icon: '🗑️', label: '回收站', children: [leaf('open_trash', '📂', '打开'), leaf('empty_trash', '🧹', '清空')] },
-      { icon: '⚙️', label: '设置', children: [leaf('on_top', '📌', '置顶'), leaf('autoplay', '🧸', '自己玩'), leaf('autostart', '🚀', '开机自启'), leaf('explorer_menu', '🖱️', '文件菜单')] },
+      cat('🔄', '角色', roles()),
+      cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('wave', '👋', '挥手'), act('dance', '🎵', '跳舞'), act('shy', '😊', '害羞'), act('rose', '🌹', '送花')]),
+      cat('💭', '动作', [act('think', '💭', '思考'), act('sleep', '💤', '睡觉'), act('noodle', '🍜', '吃面'), act('boba', '🧋', '奶茶')]),
+      cat('🕶️', '装扮', [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')]),
+      cat('🍪', '投喂', [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出来')]),
+      cat('🗑️', '回收站', [leaf('open_trash', '📂', '打开'), leaf('empty_trash', '🧹', '清空')]),
+      cat('⚙️', '设置', [leaf('on_top', '📌', '置顶'), leaf('autoplay', '🧸', '自己玩'), leaf('autostart', '🚀', '开机自启'), leaf('explorer_menu', '🖱️', '文件菜单')]),
       leaf('toggle', '🙈', '隐藏'),
       leaf('about', 'ℹ️', '关于'),
-    ],
+    ].filter(Boolean),
     onPick: id => (RUST_ITEMS.has(id) ? invoke('menu_action', { id }) : handleMenu(id)),
   });
   sendHitRects(); // take the whole window right away so a fast flick isn't lost
@@ -89,15 +110,20 @@ addEventListener('wheel', e => {
 }, { passive: false });
 
 // --- menu commands from Rust ---
-const visible = () => PET.bears.filter(b => !b.hidden);
 const sayAny = (text, ms = 4000) => { const b = visible()[0]; if (b) PET.say(b, text, { ms }); };
 const TOGGLES = { 'outfit:glasses': 'glasses', 'outfit:scarf': 'scarf', autoplay: 'autoplay', on_top: 'onTop', explorer_menu: 'explorerMenu' };
 function handleMenu(id) {
   const [kind, arg] = id.split(':');
   if (kind === 'act') return PET.run(arg);
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
-  if (id === 'about') return sayAny('YierBubu-Pet · 一二布布桌宠\nDesigned by 黄小B\nPowered by noSugarK');
-  if (kind === 'show') settings.show = arg === 'both' ? ['yier', 'bubu'] : [arg];
+  if (id === 'about') return sayAny(`YierBubu-Pet · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
+  if (kind === 'cast' && arg !== PET.cast.id) {
+    settings.show = PET.casts[arg].members;
+    save();
+    return PET.setCast(arg);
+  }
+  if (kind === 'cast') settings.show = PET.cast.members; // the current cast again: everyone back on screen
+  else if (kind === 'show') settings.show = [arg];
   else if (kind === 'size') settings.size = +arg;
   else if (TOGGLES[id]) settings[TOGGLES[id]] = !settings[TOGGLES[id]];
   else return;
@@ -153,9 +179,9 @@ T.webview.getCurrentWebview().onDragDropEvent(({ payload: p }) => {
   feed([b], p.paths, toCss(p.position));
 });
 
-// Explorer's right-click "请一二删除 / 请布布删除 / 请一二布布删除": run to the file, then eat it
+// Explorer's right-click "请X删除" (who: a character id, or 'all' / the older 'both'): run to the file, then eat it
 listen('errand', async ({ payload: { who, paths, target } }) => {
-  let list = visible().filter(b => who === 'both' || b.id === who);
+  let list = visible().filter(b => who === 'all' || who === 'both' || b.id === who);
   if (!list.length) list = visible().slice(0, 1);
   if (!list.length) return;
   const spot = target ? { x: target[0], y: target[1] } : cursor;

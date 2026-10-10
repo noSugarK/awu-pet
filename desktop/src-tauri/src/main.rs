@@ -122,7 +122,7 @@ fn to_page(win: &WebviewWindow, x: f64, y: f64) -> Option<(f64, f64)> {
     Some(((x - pos.x as f64) / scale, (y - pos.y as f64) / scale))
 }
 
-/// Handles `--eat <yier|bubu|both> <path>...`, from a fresh launch or forwarded by a second instance.
+/// Handles `--eat <character id|all> <path>...`, from a fresh launch or forwarded by a second instance.
 /// Explorer starts one process per selected item, so requests are gathered for a moment into one errand.
 fn handle_args(app: &AppHandle, args: &[String]) {
     let Some(i) = args.iter().position(|a| a == "--eat") else { return };
@@ -182,6 +182,7 @@ struct Menus {
     tray: Menu<Wry>,
     checks: Vec<CheckMenuItem<Wry>>,
     toggle: MenuItem<Wry>,
+    roles: Submenu<Wry>, // filled from the page: which casts exist and who is shown
 }
 
 impl Menus {
@@ -210,11 +211,12 @@ fn build_menus(app: &AppHandle) -> tauri::Result<Menus> {
     let bin = sub("回收站", &[&item("open_trash", "打开")?, &item("empty_trash", "清空…")?])?;
 
     let toggle = item("toggle", "隐藏")?;
+    let roles = sub("角色", &[])?;
     let tray = Menu::with_items(
         app,
         &[
             &toggle,
-            &sub("角色", &[&item("show:both", "一二和布布")?, &item("show:yier", "只有一二")?, &item("show:bubu", "只有布布")?])?,
+            &roles,
             &sub("设置", &settings_items)?,
             &bin,
             &sep()?,
@@ -222,7 +224,7 @@ fn build_menus(app: &AppHandle) -> tauri::Result<Menus> {
             &item("quit", "退出")?,
         ],
     )?;
-    Ok(Menus { tray, checks, toggle })
+    Ok(Menus { tray, checks, toggle, roles })
 }
 
 fn set_visible(app: &AppHandle, show: bool) {
@@ -293,18 +295,27 @@ fn handle_menu(app: &AppHandle, id: &str) {
     }
 }
 
+/// A 角色 menu entry: `cast:<id>` switches cast, `show:<id>` shows only that member.
+#[derive(Deserialize)]
+struct Role {
+    id: String,
+    label: String,
+    checked: bool,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Settings {
-    show: Vec<String>,
     autoplay: bool,
     on_top: bool,
     explorer_menu: bool,
+    roles: Vec<Role>,
+    eaters: Vec<explorer::Verb>, // the "请X删除" entries; empty when the Explorer menu is off
 }
 
 /// The page owns the saved settings; it reports them on load and after every change.
 #[tauri::command]
-fn sync_menu(settings: Settings, menus: State<Menus>, shared: State<Shared>, win: WebviewWindow) {
+fn sync_menu(app: AppHandle, settings: Settings, menus: State<Menus>, shared: State<Shared>, win: WebviewWindow) {
     shared.on_top.store(settings.on_top, Ordering::SeqCst);
     apply_on_top(&win, &shared);
     for (id, on) in [
@@ -314,13 +325,17 @@ fn sync_menu(settings: Settings, menus: State<Menus>, shared: State<Shared>, win
     ] {
         menus.set_checked(id, on);
     }
-    // Explorer entries follow who is shown: both → all three, one → just that one
-    let who: Vec<&str> = match (settings.explorer_menu, settings.show.len()) {
-        (false, _) => vec![],
-        (true, 2) => vec!["yier", "bubu", "both"],
-        _ => settings.show.iter().map(String::as_str).collect(),
-    };
-    if let Err(e) = explorer::set_menu(&who) {
+    if let Ok(old) = menus.roles.items() {
+        for it in old {
+            let _ = menus.roles.remove(&it);
+        }
+    }
+    for Role { id, label, checked } in &settings.roles {
+        if let Ok(it) = CheckMenuItem::with_id(&app, id, label, true, *checked, None::<&str>) {
+            let _ = menus.roles.append(&it);
+        }
+    }
+    if let Err(e) = explorer::set_menu(&settings.eaters) {
         eprintln!("could not update the Explorer menu: {e}");
     }
 }

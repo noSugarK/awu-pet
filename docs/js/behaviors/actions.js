@@ -53,6 +53,10 @@ const all = { // name → () => void | Promise
   },
   hug() { const [a, b] = shown(); if (b) return hug(a, b); },
 };
+// what an action needs from the cast on screen; anything not listed always works
+const duo = () => shown().length > 1;
+const needs = { dance: duo, hug: duo, rose: () => duo() && shown().some(b => b.ch.giver) };
+const can = name => !needs[name] || needs[name]();
 function run(name) { interact(); wake(true); return all[name]?.(); }
 
 // dropping a bear next to its partner = hug
@@ -158,5 +162,5 @@ async function helper(b) {
   return o;
 }
 
-return { all, run, hug, wave, outfit, show, setSize, bearAt, hungry, eat, errand, helper };
+return { all, can, run, hug, wave, outfit, show, setSize, bearAt, hungry, eat, errand, helper };
 })();

@@ -1,5 +1,27 @@
 // Website shell (index.html): page buttons + the download menu.
-for (const id of ['think', 'dance', 'shy', 'sleep', 'noodle', 'boba', 'rose']) document.getElementById(id).onclick = () => PET.run(id);
+const { cast } = PET;
+document.querySelector('h1').innerHTML = `${cast.members.map(id => YB.characters[id].name).join(' &amp; ')}<small>${cast.tagline || ''}</small>`;
+document.querySelector('.credit').textContent = `${cast.credit} · Powered by noSugarK · 形象版权归原作者所有，本站为非商业粉丝作品`;
+for (const id of ['think', 'dance', 'shy', 'sleep', 'noodle', 'boba', 'rose']) {
+  const btn = document.getElementById(id);
+  btn.hidden = !PET.can(id); // e.g. a lone character has nobody to dance with
+  btn.onclick = () => PET.run(id);
+}
+// 角色: one button per cast (only once there is more than one)
+const casts = Object.values(PET.casts);
+if (casts.length > 1) {
+  const row = document.createElement('div');
+  row.className = 'actions';
+  row.innerHTML = '<span class="label">角色</span>';
+  for (const c of casts) {
+    const btn = document.createElement('button');
+    btn.textContent = `${c.icon} ${c.name}`;
+    btn.setAttribute('aria-pressed', c === cast);
+    btn.onclick = () => PET.setCast(c.id);
+    row.append(btn);
+  }
+  document.querySelector('footer').prepend(row);
+}
 for (const id of ['glasses', 'scarf']) {
   const btn = document.getElementById(id);
   btn.onclick = () => {
