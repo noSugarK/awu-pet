@@ -99,12 +99,22 @@ function apply() {
 }
 apply();
 invoke('list_pets').then(p => { packs = p; apply(); refreshRoster(); });
-// packages may have been re-installed (new names, actions…): keep the saved roster's copies in step, reloading once
+// packages may have been re-installed (new names, actions…): keep the saved roster's copies in step, reloading once.
+// Nothing picked yet (first run): if a package draws the built-in characters from frames, show that one instead.
 function refreshRoster() {
+  let first = null;
+  try { first = localStorage.getItem('roster'); } catch {}
+  if (first === null && PET.cast.id !== 'roster') {
+    const list = current();
+    if (list.some(e => !e.builtin)) setRoster(list);
+    return;
+  }
   if (PET.cast.id !== 'roster') return;
   let saved;
   try { saved = JSON.parse(localStorage.getItem('roster')) || []; } catch { return; }
-  const avail = available(), fresh = saved.map(e => e.builtin ? e : avail.find(a => keyOf(a) === keyOf(e)) || e);
+  const avail = available(), fresh = saved.map(e => (e.builtin
+    ? avail.find(a => !a.builtin && a.name === YB.characters[e.builtin]?.name)
+    : avail.find(a => keyOf(a) === keyOf(e))) || e);
   if (JSON.stringify(fresh) !== JSON.stringify(saved)) setRoster(fresh);
 }
 
@@ -115,7 +125,7 @@ for (const b of PET.bears.filter(b => b.ch.sprite)) {
     .catch(() => { // the package was moved or deleted: drop that character (or go back to the built-in cast)
       const rest = current().filter(e => e.sheet !== b.ch.sprite.sheet);
       if (rest.length) return setRoster(rest);
-      try { localStorage.removeItem('roster'); } catch {}
+      try { localStorage.setItem('roster', '[]'); } catch {} // '[]', not removed: don't switch back to it on the next start
       settings.show = DEFAULTS.show;
       save();
       PET.setCast(Object.keys(PET.casts)[0]);
