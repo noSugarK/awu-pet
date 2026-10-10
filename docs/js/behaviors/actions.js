@@ -60,13 +60,21 @@ const flat = () => !shown().some(b => b.ch.sprite);
 const needs = { dance: duo, hug: duo, rose: () => duo() && flat() && shown().some(b => b.ch.giver), noodle: flat, boba: flat, outfit: flat };
 const can = name => !needs[name] || needs[name]();
 function run(name) { interact(); wake(true); return all[name]?.(); }
-// a sprite pet's own action: play one row of its sheet for a while
+// a sprite pet's own action: play one row of its sheet for a while (no row: any of its actions)
 function playRow(id, row, ms = 3600) {
   const b = byId(id);
   if (!b?.ch.sprite) return;
   interact(); wake(true);
-  setState(b, 'row' + row, ms);
+  const list = b.ch.sprite.actions;
+  setState(b, 'row' + (row ?? list[Math.random() * list.length | 0][0]), ms);
 }
+// sprite pets: a double-click gets one of its own actions; resting the pointer on one makes it shy
+bears.filter(b => b.ch.sprite).forEach(b => {
+  b.el.addEventListener('dblclick', e => { e.stopPropagation(); playRow(b.id); });
+  let shyness;
+  b.el.addEventListener('pointerenter', () => { shyness = setTimeout(() => { if (YB.rt.free(b)) setState(b, 'shy', 2200); }, 900); });
+  b.el.addEventListener('pointerleave', () => clearTimeout(shyness));
+});
 
 // dropping a bear next to its partner = hug
 YB.on('dropped', b => {

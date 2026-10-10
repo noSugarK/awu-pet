@@ -153,9 +153,12 @@ addEventListener('pointerdown', async e => {
   const cat = (icon, label, kids) => (kids = kids.filter(Boolean)).length > 0 && { icon, label, children: kids };
   // a pet drawn from frames offers its own actions (named after what its sheet shows); the others the usual ones
   const pet = PET.bears.find(b => b.el === e.target.closest('.bear')), sp = pet?.ch.sprite;
+  // rows past the 9 Codex ones (newer sheets have more) are actions too
+  const extra = sp ? Array.from({ length: Math.max(0, (pet.sheet.rows || 9) - 9) }, (_, k) => [9 + k, '✨', '动作' + (10 + k)]) : [];
   const moves = sp
     ? [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('dance', '🎵', '跳舞')]),
-       cat('✨', pet.ch.name, [...sp.actions.map(([row, icon, label]) => leaf(`row:${pet.id}:${row}`, icon, label)), act('sleep', '💤', '睡觉')])]
+       cat('✨', pet.ch.name, [...[...sp.actions, ...extra].map(([row, icon, label]) => leaf(`row:${pet.id}:${row}`, icon, label)),
+         leaf(`row:${pet.id}:any`, '🎲', '随便来一个'), act('sleep', '💤', '睡觉')])]
     : [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('wave', '👋', '挥手'), act('dance', '🎵', '跳舞'), act('shy', '😊', '害羞'), act('rose', '🌹', '送花')]),
        cat('💭', '动作', [act('think', '💭', '思考'), act('sleep', '💤', '睡觉'), act('noodle', '🍜', '吃面'), act('boba', '🧋', '奶茶')])];
   YB.radial.open({
@@ -194,7 +197,7 @@ const TOGGLES = { 'outfit:glasses': 'glasses', 'outfit:scarf': 'scarf', autoplay
 function handleMenu(id) {
   const [kind, arg] = id.split(':');
   if (kind === 'act') return PET.run(arg);
-  if (kind === 'row') { const [, who, row] = id.split(':'); return PET.playRow(who, +row); }
+  if (kind === 'row') { const [, who, row] = id.split(':'); return PET.playRow(who, row === 'any' ? undefined : +row); }
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
   if (id === 'about') return sayAny(`Awu Pet · 嗷呜桌宠 · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
   // 角色: "pick:<key>" puts that character on screen or takes it away
