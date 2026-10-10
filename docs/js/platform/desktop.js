@@ -23,19 +23,24 @@ Object.assign(PET.config, {
   walkArea: () => ({ x0: 0, x1: innerWidth, y0: innerHeight - bearH(), y1: innerHeight }),
 });
 
-// 角色 menu (radial + tray): the built-in casts, the pet packages found on disk (Rust's list_pets), "only X" for
-// each member of a two-member cast, and the folder where pet packages go
+// 角色 menu (radial + tray): every cast — the built-in ones and the pet packages found on disk (Rust's list_pets) —
+// and, for a pair, each of the two on their own ("<cast>#<index>"); then the folder where pet packages go
 const visible = () => PET.bears.filter(b => !b.hidden);
+const PACK_IDS = ['pet-a', 'pet-b']; // the character ids packs.js gives a package's members
 let packs = [];
 function roles() {
-  const { cast } = PET, all = visible().length === cast.members.length;
-  return [
-    // a built-in cast whose name a package also has (e.g. 一二布布 drawn from frames) gives way to the package
-    ...Object.values(PET.casts).filter(c => c.id !== 'pack' && !packs.some(p => p.name === c.name)).map(c => ({ id: 'cast:' + c.id, icon: c.icon, label: c.name, checked: c === cast && all })),
-    ...packs.map(p => ({ id: 'pack:' + p.key, icon: '🐾', label: p.name, checked: cast.id === 'pack' && cast.key === p.key && all })),
-    ...(cast.members.length > 1 ? cast.members.map(id => ({ id: 'show:' + id, icon: cast.icon, label: '只有' + YB.characters[id].name, checked: !all && visible()[0]?.id === id })) : []),
-    { id: 'open_pets', icon: '📂', label: '宠物包文件夹' },
-  ];
+  const { cast } = PET, on = visible().map(b => b.id), out = [];
+  const add = (id, icon, name, members, current) => { // members: [[character id, name]]
+    out.push({ id, icon, label: name, checked: current && on.length === members.length });
+    if (members.length > 1) members.forEach(([cid, n], i) => out.push({ id: `${id}#${i}`, icon, label: n, checked: current && on.length === 1 && on[0] === cid }));
+  };
+  // a built-in cast whose name a package also has (e.g. 一二布布 drawn from frames) gives way to the package
+  for (const c of Object.values(PET.casts).filter(c => c.id !== 'pack' && !packs.some(p => p.name === c.name)))
+    add('cast:' + c.id, c.icon, c.name, c.members.map(id => [id, YB.characters[id].name]), c === cast);
+  for (const p of packs)
+    add('pack:' + p.key, '🐾', p.name, p.members.map((m, i) => [PACK_IDS[i], m.name]), cast.id === 'pack' && cast.key === p.key);
+  out.push({ id: 'open_pets', icon: '📂', label: '宠物包文件夹', checked: false });
+  return out;
 }
 // Explorer's "请X删除" entries follow who is shown; 'all' sends the whole cast
 function eaters() {
@@ -136,22 +141,20 @@ function handleMenu(id) {
   if (kind === 'act') return PET.run(arg);
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
   if (id === 'about') return sayAny(`Awu Pet · 嗷呜桌宠 · ${PET.cast.name}\n${PET.cast.credit}\nPowered by noSugarK`);
-  if (kind === 'cast' && arg !== PET.cast.id) {
-    settings.show = PET.casts[arg].members;
+  // 角色: "cast:<id>" / "pack:<key>" shows the whole cast, a "#<index>" suffix just that member
+  if (kind === 'cast' || kind === 'pack') {
+    const ref = id.slice(5), m = ref.match(/^(.*)#(\d)$/), key = m ? m[1] : ref, index = m ? +m[2] : null;
+    const pack = kind === 'pack' && packs.find(p => p.key === key);
+    if (kind === 'pack' && !pack) return;
+    const members = pack ? PACK_IDS.slice(0, pack.members.length) : PET.casts[key].members;
+    settings.show = index === null ? members : [members[index]];
     save();
-    return PET.setCast(arg);
+    const current = pack ? PET.cast.id === 'pack' && PET.cast.key === key : PET.cast.id === key;
+    if (current) return apply();
+    if (pack) try { localStorage.setItem('pack', JSON.stringify(pack)); } catch {} // packs.js builds the characters from it
+    return PET.setCast(pack ? 'pack' : key);
   }
-  // a pet package: remember it for packs.js, then reload into it
-  const pack = kind === 'pack' && packs.find(p => p.key === id.slice(5));
-  if (pack && !(PET.cast.id === 'pack' && PET.cast.key === pack.key)) {
-    try { localStorage.setItem('pack', JSON.stringify(pack)); } catch {}
-    settings.show = ['pet-a', 'pet-b'].slice(0, pack.members.length);
-    save();
-    return PET.setCast('pack');
-  }
-  if (kind === 'cast' || pack) settings.show = PET.cast.members; // the current cast again: everyone back on screen
-  else if (kind === 'show') settings.show = [arg];
-  else if (kind === 'size') settings.size = +arg;
+  if (kind === 'size') settings.size = +arg;
   else if (TOGGLES[id]) settings[TOGGLES[id]] = !settings[TOGGLES[id]];
   else return;
   save();
