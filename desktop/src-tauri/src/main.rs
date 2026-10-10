@@ -302,6 +302,7 @@ fn handle_menu(app: &AppHandle, id: &str) {
 struct Role {
     id: String,
     label: String,
+    #[serde(default)] // plain entries (e.g. the pets folder) have no tick
     checked: bool,
 }
 
