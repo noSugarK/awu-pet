@@ -7,6 +7,8 @@
 //   arm (drawn pointing straight down from its shoulder pivot; the right arm is the mirror image),
 //   face anchors (eyes, mouth, blush), neck (where collars / scarves sit), hold (where paws meet),
 //   ground (feet bottom). Only the front view is used for now; side / back can be added under `views`.
+// Optional: `ears: null` (no ears), `face.nose: [x, y, rx, ry]`, and `extras` — tails, floppy ears, muzzles —
+// as [{ layer, d, fill, stroke }] (layers and fills are described in core/render.js; characters may add their own).
 YB.model({
   id: 'chibi-bear',
   name: 'Q版小熊',

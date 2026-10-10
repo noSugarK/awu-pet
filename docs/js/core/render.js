@@ -26,6 +26,7 @@ function face(m, p) {
     <g class="eyes-closed" fill="none">${eyes.map(([x, y]) => `<path d="M${x - r} ${y} Q${x} ${y + r * .9} ${x + r} ${y}"/>`).join('')}</g>
     <g class="brows" fill="none">${each((x, y, s) => `<path d="M${x - s * r * 1.2} ${y - r * 1.7} L${x + s * r} ${y - r}"/>`, 1)}</g>
     <g class="tears" fill="#8fd3ff" stroke="none">${eyes.map(([x, y]) => `<path d="M${x} ${y + r + 2} q-5 9 0 13 q5 -4 0 -13z"/>`).join('')}</g>
+    ${m.face.nose ? `<ellipse cx="${m.face.nose[0]}" cy="${m.face.nose[1]}" rx="${m.face.nose[2]}" ry="${m.face.nose[3]}" fill="${p.outline}" stroke="none"/>` : ''}
     <g class="prop p-glasses" fill="#2b2b33">
       ${eyes.map(([x, y]) => `<rect x="${x - r * 2}" y="${y - r * 1.25}" width="${r * 4}" height="${r * 2.5}" rx="${r}"/>`).join('')}
       <path fill="none" d="M${L[0] + r * 2} ${L[1] - r * .6} Q${(L[0] + R[0]) / 2} ${L[1] - r * 1.4} ${R[0] - r * 2} ${R[1] - r * .6}"/>
@@ -87,10 +88,18 @@ function props(m, p) {
    </g>`;
 }
 
+// extra shapes from the model and the character (tails, floppy ears, a muzzle, a bow…), drawn by layer:
+//   back: behind everything · body: over the torso · head-back: behind the head · head: on the head, under the face
+//   top: over the head outline. fill = a palette key or a colour; stroke: false = no outline.
+function extras(m, ch, layer) {
+  return [...(m.extras || []), ...(ch.extras || [])].filter(x => x.layer === layer)
+    .map(x => `<path d="${x.d}" fill="${ch.palette[x.fill] ?? x.fill ?? 'none'}"${x.stroke === false ? ' stroke="none"' : ''}/>`).join('');
+}
+
 // the full bear: body → neckwear → head (clipped face) → arms → props
 function bear(ch) {
   const m = YB.models[ch.model], p = ch.palette, [W, H] = m.viewBox, id = ch.id;
-  const ears = m.ears.centers.map(([x, y]) => {
+  const ears = !m.ears ? '' : m.ears.centers.map(([x, y]) => {
     const dx = W / 2 - x, dy = H * .35 - y, d = Math.hypot(dx, dy), o = m.ears.inner.offset;
     return `<circle cx="${x}" cy="${y}" r="${m.ears.r}" fill="${p.ear}"/>` +
       (p.earInner ? `<circle cx="${x + dx / d * o}" cy="${y + dy / d * o}" r="${m.ears.r * m.ears.inner.ratio}" fill="${p.earInner}" stroke="none"/>` : '');
@@ -100,20 +109,24 @@ function bear(ch) {
   // the collar is tucked under the chin (drawn before the head), the bow hangs over it
   const wear = kinds => ch.accessories.filter(a => kinds.includes(a)).map(a => neckwear[a](m, p)).join('');
   return `<svg viewBox="0 0 ${W} ${H}" stroke="${p.outline}" stroke-width="${m.stroke}" stroke-linejoin="round" stroke-linecap="round">
+   ${extras(m, ch, 'back')}
    <g class="bodyparts">
     ${m.legs.fill.map((d, i) => `<g class="leg leg-${i ? 'r' : 'l'}">
       <path fill="${p.body}" stroke="none" d="${d}"/><path fill="${p.feet}" stroke="none" d="${m.legs.sole[i]}"/><path fill="none" d="${m.legs.outline[i]}"/></g>`).join('')}
     <path fill="${p.body}" stroke="none" d="${m.body.fill}"/>
     <path fill="none" d="${m.body.outline} ${m.crotch}"/>
+    ${extras(m, ch, 'body')}
     ${wear(['collar'])}
     ${scarf(m)}
    </g>
    <g class="headpos"><g class="head">
-      ${ears}
+      ${extras(m, ch, 'head-back')}${ears}
       <clipPath id="clip-${id}"><path d="${m.head}"/></clipPath>
       <path fill="${p.body}" d="${m.head}"/>
+      ${extras(m, ch, 'head')}
       <g clip-path="url(#clip-${id})"><g class="face">${face(m, p)}</g></g>
       <path fill="none" d="${m.head}"/>
+      ${extras(m, ch, 'top')}
    </g></g>
    <g class="bodyparts">${wear(['bow'])}</g>
    ${arm('l')}
