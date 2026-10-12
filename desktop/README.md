@@ -14,7 +14,7 @@ Rust + Tauri v2。宠物的画法、动作和菜单来自 `../docs/`（和网站
 | `src/explorer.rs` | 资源管理器右键菜单（当前用户注册表，不需要管理员）、定位被选中的文件 |
 | `src/platform.rs` | 全屏程序检测、打开回收站 / 文件夹 |
 | `installer-hooks.nsh` | Windows 安装包：先卸载旧版 YierBubu-Pet |
-| `scripts/install-pets.mjs` | 把选好的宠物包装进 `<应用数据>/pets`，或 `--out src-tauri/pets` 更新安装程序自带的那份（含动作名、状态用哪一行等 `awu` 字段） |
+| `scripts/install-pets.mjs` | 把选好的宠物包装进 `<应用数据>/pets`（含动作名、状态用哪一行等 `awu` 字段） |
 
 应用数据目录：Windows `%APPDATA%\com.nosugark.yierbubupet`（identifier 沿用旧名，升级后设置和位置都保留）。
 

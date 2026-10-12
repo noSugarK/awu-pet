@@ -1,121 +1,44 @@
-/* Shared bear styles for the website (index.html) and the desktop pet (pet.html).
-   Designed by 黄小B · Powered by noSugarK */
+/* Shared sprite pet styles for the website and transparent desktop window. */
 :root { --ink: #3a2317; }
 .bear { position: absolute; width: var(--pet-size, min(34vw, 220px)); cursor: grab; outline: none; }
 .bear.dragging { cursor: grabbing; z-index: 10; }
 .bear.hidden { display: none; }
 .shadow { position: absolute; left: 24%; right: 24%; bottom: 1%; height: 7%; border-radius: 50%; background: rgba(74,44,32,.14); }
-.inner { position: absolute; inset: 0; transform-origin: 50% 95%; animation: breathe 3s ease-in-out infinite; }
-.inner svg { width: 100%; height: 100%; display: block; overflow: visible; transform-origin: 50% 95%; }
-/* characters drawn from a sprite sheet (core/runtime.js steps background-position); their frames already breathe */
+.inner { position: absolute; inset: 0; transform-origin: 50% 95%; }
 .sprite { position: absolute; inset: 0; background-repeat: no-repeat; }
-.inner:has(.sprite) { animation: none; }
 
-@keyframes breathe { 50% { transform: scale(1.02, .975); } }
-@keyframes jump {
-  0% { transform: scale(1.12, .85); }
-  30% { transform: translateY(-38%) scale(.92, 1.1); }
-  62% { transform: translateY(0) scale(1.12, .86); }
-  80% { transform: scale(.97, 1.04); }
-}
+@keyframes jump { 0% { transform: scale(1.12, .85); } 30% { transform: translateY(-38%) scale(.92, 1.1); } 62% { transform: translateY(0) scale(1.12, .86); } 80% { transform: scale(.97, 1.04); } }
 @keyframes shadowJump { 30% { transform: scale(.55); opacity: .5; } }
 @keyframes shake { 25% { transform: translateX(-2%) rotate(-2deg); } 75% { transform: translateX(2%) rotate(2deg); } }
 @keyframes bob { from { transform: translateY(0) scale(1.03, .97); } to { transform: translateY(-5%) scale(.98, 1.02); } }
-@keyframes step { from { transform: translateY(0); } to { transform: translateY(-8px); } }
-@keyframes swing { from { transform: rotate(calc(var(--rest) - 24deg)); } to { transform: rotate(calc(var(--rest) + 24deg)); } }
-@keyframes ponder { 50% { transform: rotate(-3deg) scale(1.01, .99); } }
 @keyframes dance { from { transform: rotate(-7deg); } 50% { transform: translateY(-6%) scale(.98, 1.03); } to { transform: rotate(7deg); } }
-@keyframes wave { from { transform: rotate(125deg); } to { transform: rotate(160deg); } }
-@keyframes chop { to { transform: rotate(-10deg); } }
-@keyframes sip { to { transform: translateY(-4px); } }
-@keyframes gape { from { transform: scale(1, .92); } to { transform: scale(1.06, 1.08); } }
-@keyframes chomp { to { transform: scaleY(.15); } }
 @keyframes wobble { from { transform: scale(1.04, 1.1) rotate(-2deg); } to { transform: scale(1.08, 1.06) rotate(2deg); } }
-@keyframes fidget { from { transform: rotate(-44deg); } to { transform: rotate(-60deg); } }
-
 .running .inner { animation: bob .16s ease-in-out infinite alternate; }
 .s-angry .inner { animation: shake .12s linear infinite; }
-.s-sleep .inner { animation: breathe 4.5s ease-in-out infinite; transform-origin: 50% 100%; }
+.s-dance .inner { animation: dance .5s ease-in-out infinite alternate; }
+.s-hungry .inner { animation: wobble .35s ease-in-out infinite alternate; }
 .inner.jump { animation: jump .7s ease-out; }
 .jumping .shadow { animation: shadowJump .7s ease-out; }
-
-/* SVG parts; each .arm rotates about its shoulder (local 0 0). Angles: positive = outward, same for both sides */
-/* shape-dependent values (aspect ratio, --rest arm angle, --foot-l/-r, --sleep-arm, --sleep-drop)
-   are set per bear from its model by core/runtime.js */
-.arm { transform-box: view-box; transform-origin: 0 0; transform: rotate(var(--rest)); transition: transform .3s; }
-.leg { transform-box: view-box; transition: transform .3s; }
-.leg-l { transform-origin: var(--foot-l); }
-.leg-r { transform-origin: var(--foot-r); }
-.running .leg-l { animation: step .32s ease-in-out infinite alternate; }
-.running .leg-r { animation: step .32s ease-in-out infinite alternate-reverse; }
-.running .arm-l { animation: swing .32s ease-in-out infinite alternate-reverse; }
-.running .arm-r { animation: swing .32s ease-in-out infinite alternate; }
-.wave .arm-r { animation: wave .25s ease-in-out 6 alternate; }
-.s-hug .arm { transform: rotate(75deg); }
-/* thinking / shy: both paws folded in front */
-.s-think .arm { transform: rotate(-48deg); }
-.s-shy .arm { animation: fidget .4s ease-in-out infinite alternate; }
-.s-shy .arm-r { animation-direction: alternate-reverse; }
-.s-think .inner { animation: ponder 2s ease-in-out infinite; }
-.s-shy .inner { animation: ponder 1.2s ease-in-out infinite; }
-.s-shy .blush { transform: scale(1.45); opacity: 1; }
-/* dancing: bounce + sway, inner arm holds the partner's hand, outer arm swings */
-.s-dance .inner { animation: dance .5s ease-in-out infinite alternate; }
-.s-dance .leg-l { animation: step .5s ease-in-out infinite alternate; }
-.s-dance .leg-r { animation: step .5s ease-in-out infinite alternate-reverse; }
-.s-dance.hold-r .arm-r, .s-dance.hold-l .arm-l { transform: rotate(85deg); }
-.s-dance.hold-r .arm-l, .s-dance.hold-l .arm-r { animation: swing .5s ease-in-out infinite alternate; }
-/* props held in front (noodles, boba, rose) and outfits worn on top (sunglasses, scarf) */
-.prop { display: none; }
-.s-noodle .p-noodle, .s-boba .p-boba, .s-rose .p-rose, .o-glasses .p-glasses, .o-scarf .p-scarf { display: inline; }
-.s-noodle .arm, .s-boba .arm, .s-rose .arm { transform: rotate(-48deg); }
-.running.s-rose .arm { animation: none; }
-.chop { transform-box: view-box; animation: chop .45s ease-in-out infinite alternate; }
-.p-boba { animation: sip 1.2s ease-in-out infinite alternate; }
-/* sleeping: lie down on the belly, head on the ground, paws under the chin */
-.bodyparts, .headpos { transition: opacity .4s, transform .6s ease-in-out; }
-.s-sleep .bodyparts { opacity: 0; }
-.s-sleep .headpos { transform: translateY(var(--sleep-drop)); }
-.s-sleep .arm { transition: transform .6s ease-in-out; transform: var(--sleep-arm); }
-.blush { transform-box: fill-box; transform-origin: center; transition: transform .3s, opacity .3s; opacity: .9; }
-.bear:hover .blush, .s-hug .blush { transform: scale(1.25); opacity: 1; }
-
-.eyes-happy, .eyes-closed, .m-open, .m-smile, .m-frown, .brows, .tears { display: none; }
-.s-happy .eyes-open, .s-hug .eyes-open, .s-dance .eyes-open, .s-noodle .eyes-open, .s-rose .eyes-open, .s-sleep .eyes-open, .s-shy .eyes-open { display: none; }
-.s-happy .eyes-happy, .s-hug .eyes-happy, .s-dance .eyes-happy, .s-noodle .eyes-happy, .s-rose .eyes-happy { display: inline; }
-.s-sleep .eyes-closed, .s-shy .eyes-closed { display: inline; }
-.s-happy .m-normal, .s-hug .m-normal, .s-dance .m-normal, .s-surprised .m-normal, .s-angry .m-normal, .s-sad .m-normal { display: none; }
-.s-happy .m-smile, .s-hug .m-smile, .s-dance .m-smile { display: inline; }
-.s-surprised .m-open { display: inline; }
-.s-angry .m-frown, .s-sad .m-frown, .s-angry .brows, .s-sad .tears { display: inline; }
-.tears path { animation: tear 1s ease-in infinite; }
-.tears path:last-child { animation-delay: .5s; }
-@keyframes tear { from { transform: translateY(0); opacity: 1; } to { transform: translateY(22px); opacity: 0; } }
+.dash.running .inner { animation-duration: .1s; }
 
 .particle { position: fixed; z-index: 20; pointer-events: none; transform: translate(-50%, -50%); animation: fly 1s ease-out forwards; }
 @keyframes fly { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.4) rotate(40deg); opacity: 0; } }
+.meal-token { position: fixed; z-index: 21; pointer-events: none; font-size: 28px; line-height: 1; filter: drop-shadow(0 2px 2px #49331b66); transform: translate(-50%, -50%); }
+.meal-eaten { animation: mealEat .5s ease-in both; }
+@keyframes mealEat { 75% { opacity: 1; } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.12); opacity: 0; } }
+.meal-kicked { animation: mealKick .85s cubic-bezier(.15,.6,.35,1) both; }
+@keyframes mealKick { 0% { transform: translate(calc(-50% + var(--sx)), calc(-50% + var(--sy))) scale(.9); opacity: 1; } 30%, 52% { transform: translate(-50%, -50%) scale(.9); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(400deg) scale(.2); opacity: 0; } }
 .spark { position: fixed; z-index: 5; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); animation: spark .7s ease-out forwards; }
 @keyframes spark { to { transform: translate(-50%, 0) scale(0); opacity: 0; } }
 .puff { position: fixed; z-index: 1; width: 16px; height: 16px; border-radius: 50%; pointer-events: none; background: rgba(150,125,110,.3); transform: translate(-50%, -50%); animation: puff .55s ease-out forwards; }
 @keyframes puff { to { transform: translate(calc(-50% + var(--dx)), -120%) scale(2.2); opacity: 0; } }
 
-/* file dragged over: huge mouth waiting; dropped: chomp and chew */
-.m-huge { display: none; transform-box: fill-box; transform-origin: 50% 0; }
-.s-hungry .m-normal, .s-hungry .m-open, .s-eat .m-normal { display: none; }
-.s-hungry .m-huge { display: inline; animation: gape .35s ease-in-out infinite alternate; }
-.s-hungry .inner { animation: wobble .35s ease-in-out infinite alternate; }
-.s-hungry .arm { transform: rotate(80deg); }
-.s-hungry .eyes-open { display: none; }
-.s-hungry .eyes-happy { display: inline; } /* eyes squeezed shut: "> <" */
-.s-eat .eyes-open { display: none; }
-.s-eat .eyes-happy { display: inline; }
-.s-eat .m-open { display: inline; transform-box: fill-box; transform-origin: center; animation: chomp .16s ease-in-out infinite alternate; }
-.s-eat .arm { transform: rotate(-48deg); }
-/* dashing to a file on an errand: faster steps */
-.dash.running .inner { animation-duration: .1s; }
-.dash.running .leg-l, .dash.running .leg-r, .dash.running .arm-l, .dash.running .arm-r { animation-duration: .2s; }
+/* The file reaches the foot before the body strikes. Sheet pets share this overlay. */
+.s-kick { --kick-back: -8px; --kick-forward: 12px; --kick-tilt: -5deg; --kick-tilt-forward: 7deg; }
+.s-kick.kick-left { --kick-back: 8px; --kick-forward: -12px; --kick-tilt: 5deg; --kick-tilt-forward: -7deg; }
+@keyframes kickBody { 0%, 28% { transform: translateX(var(--kick-back)) rotate(var(--kick-tilt)); } 52% { transform: translateX(var(--kick-forward)) rotate(var(--kick-tilt-forward)); } 100% { transform: none; } }
+.s-kick.kick-strike .inner { animation: kickBody .85s ease-out both; }
 
-/* speech bubble above a bear; may carry choice buttons */
 .bubble { position: absolute; left: 50%; bottom: 92%; transform: translateX(-50%); z-index: 30; min-width: 120px; max-width: 220px;
   padding: 8px 12px; border: 2px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink);
   font: 14px/1.4 "ZCOOL KuaiLe", system-ui, sans-serif; text-align: center; white-space: pre-line; cursor: default; animation: pop .2s ease-out; }
@@ -125,4 +48,4 @@
 .bubble button:hover { background: #ffe3c8; }
 @keyframes pop { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
 
-@media (prefers-reduced-motion: reduce) { .inner, .spark, .leg, .arm { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .inner, .spark, .meal-token { animation-duration: .01ms !important; } }

@@ -1,21 +1,8 @@
-// 布布 · Designed by 黄小B · Powered by noSugarK
-// Character = which model + how it's painted + how he behaves. Colours sampled from design/reference/bubu-1.jpg.
+// Built-in sprite pet, drawn from the bundled 布布 pet package.
 YB.character({
-  id: 'bubu',
-  name: '布布',
-  model: 'chibi-bear',
-  palette: {
-    body: '#e2b08e',
-    outline: '#4a261a',   // also eyes and mouth
-    ear: '#e2b08e',
-    earInner: '#4a261a',
-    blush: '#fcce93',
-    feet: '#e2b08e',      // feet in body colour, outlined
-  },
-  accessories: [],
-  fx: ['★', '✦'],
-  fxColor: '#f5b400',
-  giver: true,            // brings the rose
+  id: 'bubu', name: '布布',
+  sprite: { sheet: 'img/bubu-spritesheet.webp', actions: [[3, '👋', '挥手'], [4, '🙌', '欢呼'], [5, '😭', '哭哭'], [6, '☺️', '扭扭'], [7, '🚶', '踏步'], [8, '🥺', '撒娇']], states: { shy: 8, dance: 7 } },
+  fx: ['☀', '✨'], fxColor: '#f5b400',
   personality: { sleepiness: .4, playfulness: .9, social: .8 },
   lines: { callPartner: '一二！', sneaky: '嘿嘿～' },
 });

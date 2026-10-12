@@ -1,5 +1,5 @@
 // Awu Pet public API for the platform shells (platform/web.js, platform/desktop.js).
-// Load order: core/yb.js → models/*.js → characters/*.js → casts.js → packs.js → core/render.js → core/runtime.js
+// Load order: core/yb.js → characters/*.js → casts.js → packs.js → core/runtime.js
 //             → behaviors/feeding.js → behaviors/actions.js → behaviors/brain.js → pet.js → platform/*.js
 // Designed by 黄小B · Powered by noSugarK
 const PET = (() => {
@@ -15,13 +15,12 @@ const PET = (() => {
     bears: rt.bears,
     run: A.run,
     playRow: A.playRow,
-    outfit: A.outfit,
     show: A.show,
     setSize: A.setSize,
     say: rt.say,
     rect: rt.rect,
     dragging: rt.dragging,
-    // desktop: eyes follow the global cursor without counting as activity
+    // desktop: detect fast cursor movement without counting it as activity
     lookAt: (x, y) => rt.trackMouse(x, y),
     // desktop: OS idle time decides when they fall asleep
     setIdle(seconds) {

@@ -1,22 +1,8 @@
-// 一二 · Designed by 黄小B · Powered by noSugarK
-// Character = which model + how it's painted + how she behaves. Colours sampled from design/reference/yier-1.jpg.
+// Built-in sprite pet, drawn from the bundled 一二 pet package.
 YB.character({
-  id: 'yier',
-  name: '一二',
-  model: 'chibi-bear',
-  palette: {
-    body: '#fdfdfb',
-    outline: '#3f0c03',   // also eyes and mouth
-    ear: '#440d02',       // solid dark ears
-    earInner: null,
-    blush: '#efb7aa',
-    feet: '#3f0c03',      // dark little feet
-    collar: '#420d05',
-  },
-  accessories: ['collar', 'bow'],
-  fx: ['♥', '♡'],
-  fxColor: '#ff6b8a',
-  // 0..1, used by behaviors/brain.js to weigh what she does on her own
+  id: 'yier', name: '一二',
+  sprite: { sheet: 'img/yier-spritesheet.webp', actions: [[3, '👋', '挥手'], [4, '🙌', '欢呼'], [5, '😭', '哭哭'], [6, '☺️', '扭扭'], [7, '💃', '跳舞'], [8, '🥰', '卖萌']], states: { shy: 6, dance: 7 } },
+  fx: ['♥', '♡'], fxColor: '#ff6b8a',
   personality: { sleepiness: .6, playfulness: .7, social: .9 },
-  lines: { callPartner: '布布！', scold: '你又偷吃！' },
+  lines: { callPartner: '布布！', scold: '你又偷吃？' },
 });

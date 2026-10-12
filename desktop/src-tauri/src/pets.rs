@@ -33,6 +33,53 @@ pub struct Pack {
     members: Vec<Member>,
 }
 
+#[derive(Deserialize)]
+pub struct DownloadMember {
+    manifest: Vec<u8>,
+    sheet: Vec<u8>,
+}
+
+fn download_dirs(id: &str) -> Option<(&'static str, &'static [&'static str])> {
+    match id {
+        "dogs" => Some(("小白和小金毛", &["1-小白", "2-小金毛"])),
+        "lulu" => Some(("噜噜和噜妹", &["1-噜噜", "2-噜妹"])),
+        "dragon" => Some(("奶龙", &[""])),
+        "frog" => Some(("奶蛙", &[""])),
+        _ => None,
+    }
+}
+
+fn valid_download(m: &DownloadMember) -> bool {
+    m.manifest.len() <= 64 * 1024 && m.sheet.len() <= 10 * 1024 * 1024
+        && m.sheet.starts_with(b"RIFF") && m.sheet.get(8..12) == Some(b"WEBP")
+        && serde_json::from_slice::<Manifest>(&m.manifest).is_ok_and(|p| p.spritesheet_path.as_deref() == Some("spritesheet.webp"))
+}
+
+/// Install only named packs from the built-in catalogue; bytes are downloaded by the page.
+#[tauri::command]
+pub fn install_pet_pack(app: AppHandle, id: String, members: Vec<DownloadMember>) -> Result<(), String> {
+    let (name, dirs) = download_dirs(&id).ok_or("未知宠物包")?;
+    if members.len() != dirs.len() { return Err("宠物包文件不完整".into()); }
+    if !members.iter().all(valid_download) { return Err("宠物包格式不正确或文件过大".into()); }
+    let root = app.path().app_data_dir().map_err(|e| e.to_string())?.join("pets");
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    let target = root.join(name);
+    if target.exists() { return Err("已安装这个宠物包；请先在宠物包文件夹中管理它".into()); }
+    let staging = root.join(format!(".{id}-download-{}", std::process::id()));
+    std::fs::create_dir(&staging).map_err(|e| e.to_string())?;
+    let result = (|| -> std::io::Result<()> {
+        for (m, dir) in members.iter().zip(dirs) {
+            let folder = staging.join(dir);
+            std::fs::create_dir_all(&folder)?;
+            std::fs::write(folder.join("pet.json"), &m.manifest)?;
+            std::fs::write(folder.join("spritesheet.webp"), &m.sheet)?;
+        }
+        std::fs::rename(&staging, target)
+    })();
+    if result.is_err() { let _ = std::fs::remove_dir_all(staging); }
+    result.map_err(|e| e.to_string())
+}
+
 /// Where packages are looked for; the first one is ours (created on demand).
 fn roots(app: &AppHandle) -> Vec<PathBuf> {
     let mut roots = vec![];
@@ -104,5 +151,20 @@ pub fn open_folder(app: &AppHandle) {
     if let Some(dir) = roots(app).into_iter().next() {
         let _ = std::fs::create_dir_all(&dir);
         crate::platform::open_dir(&dir);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn catalogue_accepts_only_named_webp_members() {
+        assert!(download_dirs("dogs").is_some());
+        assert!(download_dirs("../dogs").is_none());
+        let mut m = DownloadMember { manifest: br#"{"spritesheetPath":"spritesheet.webp"}"#.to_vec(), sheet: b"RIFF1234WEBP".to_vec() };
+        assert!(valid_download(&m));
+        m.manifest = br#"{"spritesheetPath":"../outside.webp"}"#.to_vec();
+        assert!(!valid_download(&m));
     }
 }

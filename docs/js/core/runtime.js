@@ -23,11 +23,11 @@ function setCast(id) {
 // --- characters drawn from a sprite sheet (Codex / Petdex pet packages, see packs.js) ---
 // The sheet is a grid of 192 × 208 cells, one animation per row; a pet state picks the row.
 const ROW = { idle: 0, right: 1, left: 2, wave: 3, jump: 4, failed: 5, waiting: 6, busy: 7, review: 8 };
-const STATE_ROW = { sad: 'failed', angry: 'failed', happy: 'jump', surprised: 'jump', hungry: 'jump', hug: 'wave', dance: 'wave', shy: 'wave', rose: 'wave',
-  think: 'review', sleep: 'waiting', eat: 'busy', noodle: 'busy', boba: 'busy' };
+const STATE_ROW = { sad: 'failed', angry: 'failed', happy: 'jump', surprised: 'jump', hungry: 'jump', hug: 'wave', dance: 'wave', shy: 'wave',
+  think: 'review', sleep: 'waiting', eat: 'busy', kick: 'jump' };
 const SPRITE_FPS = 8;
-// what the movement and effects need from a "model": the cell, where the face is, where the feet are
-const SHEET_MODEL = { viewBox: [192, 208], face: { mouth: [96, 100] }, neck: { y: 120 }, ground: 200, arm: { rest: 0, sleep: { shift: [0, 0], rotate: 0 } }, legs: { pivots: [[80, 200], [112, 200]] } };
+// The sprite cell and the mouth anchor used for file effects.
+const SHEET_MODEL = { viewBox: [192, 208], face: { mouth: [96, 100] } };
 // frames per row: the cells with anything opaque in them
 function countFrames(img, cols, rows) {
   const c = document.createElement('canvas'), W = 48, H = 52;
@@ -56,7 +56,7 @@ async function setSprite(id, url) {
 // the row for what the pet is doing: "row<N>" states (an action picked from its menu) play that row; a pet may say
 // which rows suit its states (sprite.states) and that its running rows are swapped (sprite.flip)
 function spriteFrame(b, now, running) {
-  const sp = b.ch.sprite, picked = /^row(\d)$/.exec(b.state), mood = b.el.classList.contains('wave') ? 'wave' : b.state;
+  const sp = b.ch.sprite, picked = /^row(\d+)$/.exec(b.state), mood = b.el.classList.contains('wave') ? 'wave' : b.state;
   const row = running ? ((b.dir < 0) !== !!sp.flip ? ROW.left : ROW.right)
     : picked ? +picked[1] : sp.states?.[mood] ?? ROW[mood === 'wave' ? 'wave' : STATE_ROW[mood] || 'idle'];
   const { cols, rows, frames } = b.sheet;
@@ -67,34 +67,24 @@ function spriteFrame(b, now, running) {
 
 const bears = cast.members.map(id => YB.characters[id]).map(ch => {
   const el = document.createElement('div');
-  const m = ch.sprite ? SHEET_MODEL : YB.models[ch.model];
+  const m = SHEET_MODEL;
   el.className = 'bear';
   el.id = ch.id;
   el.tabIndex = 0;
   el.setAttribute('role', 'button');
   el.setAttribute('aria-label', ch.name);
-  // everything the animations need about the shape comes from the model
-  const px = ([x, y]) => `${x}px ${y}px`;
-  Object.entries({
-    'aspect-ratio': `${m.viewBox[0]} / ${m.viewBox[1]}`,
-    '--rest': m.arm.rest + 'deg',
-    '--sleep-arm': `translate(${m.arm.sleep.shift[0]}px, ${m.arm.sleep.shift[1]}px) rotate(${m.arm.sleep.rotate}deg)`,
-    '--sleep-drop': m.ground - m.neck.y + 'px',
-    '--foot-l': px(m.legs.pivots[0]),
-    '--foot-r': px(m.legs.pivots[1]),
-  }).forEach(([k, v]) => el.style.setProperty(k, v));
-  el.innerHTML = `<div class="shadow"></div><div class="inner">${ch.sprite ? '<div class="sprite"></div>' : YB.render.bear(ch)}</div>`;
+  el.style.aspectRatio = `${m.viewBox[0]} / ${m.viewBox[1]}`;
+  el.innerHTML = '<div class="shadow"></div><div class="inner"><div class="sprite"></div></div>';
   document.body.append(el);
   const inner = el.querySelector('.inner');
-  return { id: ch.id, ch, m, el, inner, svg: inner.querySelector('svg'), head: el.querySelector('.head'), face: el.querySelector('.face'),
-    sprite: el.querySelector('.sprite'), sheet: {},
-    hidden: false, state: 'normal', timer: 0, x: 0, y: 0, goal: null, dir: 0, runUntil: 0, lastPuff: 0, lastFx: 0, fx: 0, fy: 0, tilt: 0, lean: 0, clicks: [] };
+  return { id: ch.id, ch, m, el, inner, sprite: el.querySelector('.sprite'), sheet: {},
+    hidden: false, state: 'normal', timer: 0, x: 0, y: 0, goal: null, dir: 0, runUntil: 0, lastPuff: 0, lastFx: 0, clicks: [] };
 });
 const byId = id => bears.find(b => b.id === id);
 const shown = () => bears.filter(b => !b.hidden);
 const other = b => { const o = bears.find(x => x !== b); return o && !o.hidden ? o : null; };
 const rect = b => b.el.getBoundingClientRect();
-// a bear's "center" is its face (mouth height), where looks, bubbles and bursts aim
+// a bear's face center, where bubbles and bursts aim
 const center = b => { const r = rect(b); return { x: r.left + r.width / 2, y: r.top + r.height * b.m.face.mouth[1] / b.m.viewBox[1] }; };
 const clamp = (v, a, z) => Math.max(a, Math.min(z, v));
 const rand = (a, z) => a + Math.random() * (z - a);
@@ -122,8 +112,9 @@ function setPos(b, x, y) {
 }
 function moveTo(b, x, y, speed = 320) {
   const r = rect(b);
+  if (b.goal) b.goal.done(false);
   b.goal = { x: clamp(x, 0, innerWidth - r.width), y: clamp(y, 0, innerHeight - r.height), speed };
-  return new Promise(res => { b.goal.done = res; }); // a newer moveTo replaces the goal, so the old promise just never resolves
+  return new Promise(res => { b.goal.done = res; }); // false means a newer movement interrupted this one
 }
 
 // --- effects ---
@@ -142,9 +133,21 @@ function flyInto(b, from, chars, n) {
   const c = center(b);
   for (let i = 0; i < n; i++) {
     const p = document.createElement('span');
-    p.className = 'particle';
+    p.className = 'meal-token meal-eaten';
     p.textContent = chars[i % chars.length];
-    p.style.cssText = `left:${from.x + rand(-20, 20)}px;top:${from.y + rand(-20, 20)}px;font-size:22px;--dx:${c.x - from.x}px;--dy:${c.y + 20 - from.y}px;animation-duration:.45s`;
+    p.style.cssText = `left:${from.x + rand(-14, 14)}px;top:${from.y + rand(-14, 14)}px;--dx:${c.x - from.x}px;--dy:${c.y - from.y}px;animation-delay:${i * 90}ms`;
+    p.onanimationend = () => p.remove();
+    document.body.append(p);
+  }
+}
+// The file appears at the pet's foot, then flies towards the recycle bin after the kick.
+function kickAway(b, from, chars, n, direction) {
+  const r = rect(b), x = r.left + r.width * (.5 + direction * .22), y = r.bottom - r.height * .14;
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('span');
+    p.className = 'meal-token meal-kicked';
+    p.textContent = chars[i % chars.length];
+    p.style.cssText = `left:${x}px;top:${y}px;--sx:${(from?.x ?? x) - x}px;--sy:${(from?.y ?? y) - y}px;--dx:${direction * (100 + i * 18)}px;--dy:${-65 - i * 12}px;animation-delay:${i * 80}ms`;
     p.onanimationend = () => p.remove();
     document.body.append(p);
   }
@@ -258,15 +261,19 @@ bears.forEach(b => {
       drag.moved = true;
       b.el.classList.add('dragging');
     }
-    moveTo(b, e.clientX - drag.ox, e.clientY - drag.oy, 650);
+    const x = e.clientX - drag.ox, y = e.clientY - drag.oy;
+    moveTo(b, x, y, Math.max(650, Math.hypot(x - b.x, y - b.y) * 4));
   });
-  const release = () => {
+  const release = e => {
     if (drag?.b !== b) return;
     const moved = drag.moved;
     drag = null;
     if (!moved) return poke(b);
     b.el.classList.remove('dragging');
-    moveTo(b, b.goal?.x ?? b.x, b.goal?.y ?? b.y, 650).then(() => { YB.emit('dropped', b); savePositions(); });
+    b.dropAt = { x: e.clientX, y: e.clientY };
+    const x = b.goal?.x ?? b.x, y = b.goal?.y ?? b.y;
+    moveTo(b, x, y, Math.max(650, Math.hypot(x - b.x, y - b.y) * 4))
+      .then(arrived => { if (arrived) { YB.emit('dropped', b); savePositions(); } });
   };
   b.el.addEventListener('pointerup', release);
   b.el.addEventListener('pointercancel', release);
@@ -292,16 +299,17 @@ addEventListener('resize', () => {
   bears.forEach(b => setPos(b, b.x, b.y));
 });
 
-// --- main loop: movement, running effects, face/head following ---
+// --- main loop: movement, sprite frames and effects ---
 let last = performance.now();
 function loop(now) {
+  if (now - last < 25) return requestAnimationFrame(loop); // about 30 fps on common displays; CSS animations keep running
   const dt = Math.min((now - last) / 1000, .05);
   last = now;
   for (const b of bears) {
     if (b.hidden) continue;
     if (b.goal) {
       const g = b.goal, dx = g.x - b.x, dy = g.y - b.y, d = Math.hypot(dx, dy), stepLen = g.speed * dt;
-      if (d <= stepLen) { setPos(b, g.x, g.y); b.goal = null; g.done(); }
+      if (d <= stepLen) { setPos(b, g.x, g.y); b.goal = null; g.done(true); }
       else {
         setPos(b, b.x + dx / d * stepLen, b.y + dy / d * stepLen);
         if (Math.abs(dx) > 2) b.dir = Math.sign(dx);
@@ -311,34 +319,12 @@ function loop(now) {
     const running = now < b.runUntil;
     b.el.classList.toggle('running', running);
     if (running && now - b.lastPuff > (b.el.classList.contains('dash') ? 60 : 140)) { b.lastPuff = now; puff(b); }
-    if (b.state === 'noodle' && now - b.lastFx > 500) {
-      b.lastFx = now;
-      const r = rect(b);
-      burst(r.left + r.width * .5, r.top + r.height * .72, ['～'], '#b9aca3', 1, .3); // steam from the bowl
-    }
     if ((b.state === 'think' && now - b.lastFx > 1100) || (b.state === 'dance' && now - b.lastFx > 350)) {
       b.lastFx = now;
       const r = rect(b), think = b.state === 'think';
       burst(r.left + r.width * (think ? .7 : Math.random()), r.top + r.height * (think ? .05 : .2), think ? ['?'] : ['♪', '♫', '♬'], '#4a7fd6', 1, think ? .2 : .8);
     }
-    if (b.sprite) { spriteFrame(b, now, running); continue; } // frames do the rest
-
-    // face + head look at the pointer, the partner, or the running direction
-    let tx = 0, ty = 0, tt = 0;
-    // the face slides toward what it looks at; the big head only leans a few degrees
-    if (running) { tx = b.dir * 16; ty = 3; tt = b.dir * 2; }
-    else if (b.state === 'think') { tx = -7; ty = -7; tt = -4; }
-    else if (b.state !== 'sleep' && b.state !== 'hungry') {
-      const c = center(b), o = other(b);
-      const t = o && ['hug', 'sad', 'dance', 'shy'].includes(b.state) ? center(o) : mouse;
-      const dx = t.x - c.x, dy = t.y - c.y, d = Math.hypot(dx, dy) || 1, k = Math.min(d / 80, 1) * 8;
-      tx = dx / d * k; ty = dy / d * k * .6; tt = clamp(dx / 150, -4, 4);
-    }
-    b.fx += (tx - b.fx) * .15; b.fy += (ty - b.fy) * .15; b.tilt += (tt - b.tilt) * .1;
-    b.lean += ((running ? b.dir * 8 : 0) - b.lean) * .15;
-    b.face.setAttribute('transform', `translate(${b.fx} ${b.fy})`);
-    b.head.setAttribute('transform', `rotate(${b.tilt} ${b.m.viewBox[0] / 2} ${b.m.neck.y})`);
-    b.svg.style.rotate = b.lean + 'deg';
+    spriteFrame(b, now, running);
   }
   requestAnimationFrame(loop);
 }
@@ -348,6 +334,6 @@ function start() {
 }
 
 return { config, cast, setCast, setSprite, bears, byId, shown, other, rect, center, clamp, rand, sleep, baseState, free, setState, refresh, setPos, moveTo,
-  burst, flyInto, puff, jump, say, hush, mouse, activity, interact, wake, trackMouse, poke, savePositions, layout, start,
+  burst, flyInto, kickAway, puff, jump, say, hush, mouse, activity, interact, wake, trackMouse, poke, savePositions, layout, start,
   dragging: () => !!drag, dragged: () => drag?.b };
 })();

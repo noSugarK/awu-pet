@@ -7,7 +7,7 @@ const { invoke } = T.core;
 const { listen } = T.event;
 
 // --- settings live in the webview's localStorage; Rust only mirrors them in the menus ---
-const DEFAULTS = { show: PET.cast.members, size: 180, glasses: false, scarf: false, autoplay: true, onTop: true, explorerMenu: true };
+const DEFAULTS = { show: PET.cast.members, size: 180, autoplay: true, onTop: true, explorerMenu: true };
 let settings = DEFAULTS;
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') }; } catch {}
 const save = () => { try { localStorage.setItem('settings', JSON.stringify(settings)); } catch {} };
@@ -17,11 +17,15 @@ const save = () => { try { localStorage.setItem('settings', JSON.stringify(setti
 // whichever monitor it is on; it is remembered where it was left
 const bearH = () => PET.rect(PET.bears[0]).height;
 let screens = [[0, 0, innerWidth, innerHeight]];
-const screenOf = b => { // the monitor holding the bear's centre, else the nearest one
+const screenAt = (x, y) => { // prefer the monitor under the pointer, even near an uneven screen boundary
+  const gap = ([sx, sy, w, h]) => Math.hypot(Math.max(sx - x, 0, x - sx - w), Math.max(sy - y, 0, y - sy - h));
+  return screens.find(([sx, sy, w, h]) => x >= sx && x < sx + w && y >= sy && y < sy + h)
+    || screens.reduce((a, s) => gap(s) < gap(a) ? s : a);
+};
+const screenOf = b => {
   if (!b) return screens[0];
   const r = PET.rect(b), x = r.left + r.width / 2, y = r.top + r.height / 2;
-  const gap = ([sx, sy, w, h]) => Math.hypot(Math.max(sx - x, 0, x - sx - w), Math.max(sy - y, 0, y - sy - h));
-  return screens.reduce((a, s) => gap(s) < gap(a) ? s : a);
+  return screenAt(x, y);
 };
 Object.assign(PET.config, {
   sparkTrail: false,
@@ -32,31 +36,39 @@ Object.assign(PET.config, {
   walkArea: b => { const [x, y, w, h] = screenOf(b); return { x0: x, x1: x + w, y0: y + h - bearH(), y1: y + h }; },
 });
 // keep a bear on a monitor: one dropped (or left, before a monitor was unplugged) between screens goes to the nearest
-function onScreen(b) {
-  const [x, y, w, h] = screenOf(b), r = PET.rect(b);
+function onScreen(b, point) {
+  const [x, y, w, h] = point ? screenAt(point.x, point.y) : screenOf(b), r = PET.rect(b);
   const nx = Math.min(Math.max(b.x, x), x + w - r.width), ny = Math.min(Math.max(b.y, y), y + h - r.height);
-  if (nx !== b.x || ny !== b.y) YB.rt.moveTo(b, nx, ny, 500);
+  if (nx !== b.x || ny !== b.y) return YB.rt.moveTo(b, nx, ny, 500);
 }
 function setScreens(list) {
   if (!list?.length) return;
   screens = list;
-  PET.bears.forEach(onScreen);
+  PET.bears.forEach(b => onScreen(b));
 }
 invoke('screen_areas').then(setScreens);
 listen('screens', e => setScreens(e.payload));
-YB.on('dropped', onScreen);
+YB.on('dropped', async b => { const point = b.dropAt; b.dropAt = null; if (await onScreen(b, point) !== false) YB.rt.savePositions(); });
 
 // 角色 menu (radial + tray): every character once — the built-in ones and the members of the pet packages found on
 // disk (Rust's list_pets) — ticked when on screen; picking one adds it or takes it away (see packs.js), up to MAX
 const visible = () => PET.bears.filter(b => !b.hidden);
 const MAX = 4;
 let packs = [];
+const CATALOG = [
+  { id: 'dogs', name: '小白和小金毛', dirs: ['1-小白', '2-小金毛'] },
+  { id: 'lulu', name: '噜噜和噜妹', dirs: ['1-噜噜', '2-噜妹'] },
+  { id: 'dragon', name: '奶龙', dirs: [''] },
+  { id: 'frog', name: '奶蛙', dirs: [''] },
+];
+// Pinned repository data is available before this source change is published, too.
+const PACK_URL = 'https://raw.githubusercontent.com/noSugarK/awu-pet/v0.5.1/desktop/src-tauri/pets/';
 const keyOf = e => e.builtin ? 'b:' + e.builtin : `p:${e.key}#${e.index}`;
 // everyone who can be picked; a built-in character a package also has (e.g. 一二 drawn from frames) gives way to it
 function available() {
   const fromPacks = packs.flatMap(p => p.members.map((m, index) => ({ key: p.key, index, name: m.name, sheet: m.sheet, credit: m.credit, awu: m.awu })));
   const names = new Set(fromPacks.map(e => e.name));
-  return [...Object.values(YB.characters).filter(ch => !ch.sprite && !names.has(ch.name)).map(ch => ({ builtin: ch.id })), ...fromPacks];
+  return [...['yier', 'bubu'].map(id => YB.characters[id]).filter(ch => !names.has(ch.name)).map(ch => ({ builtin: ch.id })), ...fromPacks];
 }
 // who is on screen now, as roster entries; a built-in character that a package also has counts as the package one
 function current() {
@@ -71,7 +83,8 @@ function roles() {
   const icon = e => e.builtin ? Object.values(PET.casts).find(c => c.members.includes(e.builtin))?.icon : '🐾';
   return [
     ...available().map(e => ({ id: 'pick:' + keyOf(e), icon: icon(e), label: e.name || YB.characters[e.builtin].name, checked: on.has(keyOf(e)) })),
-    { id: 'open_pets', icon: '📂', label: '宠物包文件夹', checked: false },
+    ...CATALOG.filter(c => !packs.some(p => p.name === c.name)).map(c => ({ id: 'download:' + c.id, icon: '⬇️', label: '下载' + c.name })),
+    { id: 'open_pets', icon: '📂', label: '导入本地宠物包', checked: false },
   ];
 }
 function setRoster(list) {
@@ -92,13 +105,17 @@ function apply() {
   PET.setSize(settings.size);
   const ids = settings.show.filter(id => PET.cast.members.includes(id)); // saved while another cast was on
   PET.show(ids.length ? ids : PET.cast.members);
-  PET.outfit('glasses', settings.glasses);
-  PET.outfit('scarf', settings.scarf);
   PET.config.autoplay = settings.autoplay;
   invoke('sync_menu', { settings: { ...settings, roles: roles(), eaters: eaters() } });
 }
 apply();
 invoke('list_pets').then(p => { packs = p; apply(); refreshRoster(); });
+try {
+  if (!localStorage.getItem('introSeen')) {
+    localStorage.setItem('introSeen', '1');
+    setTimeout(() => { const b = visible()[0]; if (b) PET.say(b, '右键我可以换角色、看动作。\n小文件拖给我会直接移入回收站，大文件会先问你～', { ms: 6500 }); }, 1800);
+  }
+} catch {}
 // packages may have been re-installed (new names, actions…): keep the saved roster's copies in step, reloading once.
 // Nothing picked yet (first run): if a package draws the built-in characters from frames, show that one instead.
 function refreshRoster() {
@@ -118,10 +135,11 @@ function refreshRoster() {
   if (JSON.stringify(fresh) !== JSON.stringify(saved)) setRoster(fresh);
 }
 
-// characters from a pet package: their sheets come from the package files, through Rust
-for (const b of PET.bears.filter(b => b.ch.sprite)) {
+// Built-in sheets are web assets; installed package sheets are read through Rust.
+for (const b of PET.bears) {
+  if (b.ch.sprite.sheet.startsWith('img/')) { PET.setSprite(b.id, b.ch.sprite.sheet); continue; }
   invoke('read_pet_sheet', { path: b.ch.sprite.sheet })
-    .then(bytes => PET.setSprite(b.id, URL.createObjectURL(new Blob([bytes]))))
+    .then(bytes => PET.setSprite(b.id, URL.createObjectURL(new Blob([new Uint8Array(bytes)]))))
     .catch(() => { // the package was moved or deleted: drop that character (or go back to the built-in cast)
       const rest = current().filter(e => e.sheet !== b.ch.sprite.sheet);
       if (rest.length) return setRoster(rest);
@@ -155,8 +173,8 @@ addEventListener('pointerdown', async e => {
   if (e.button !== 2 || !e.target.closest('.bear')) return;
   const [autostart, found] = await Promise.all([invoke('autostart_enabled'), invoke('list_pets')]);
   packs = found;
-  const on = { 'outfit:glasses': settings.glasses, 'outfit:scarf': settings.scarf, on_top: settings.onTop,
-    autoplay: settings.autoplay, explorer_menu: settings.explorerMenu, autostart };
+  apply(); // includes packs copied into the import folder since the last menu opened
+  const on = { on_top: settings.onTop, autoplay: settings.autoplay, explorer_menu: settings.explorerMenu, autostart };
   const leaf = (id, icon, label) => ({ id, icon, label, checked: on[id] });
   // only what the cast on screen can do (a lone character has nobody to hug or dance with)
   const act = (name, icon, label) => PET.can(name) && leaf('act:' + name, icon, label);
@@ -165,19 +183,15 @@ addEventListener('pointerdown', async e => {
   const pet = PET.bears.find(b => b.el === e.target.closest('.bear')), sp = pet?.ch.sprite;
   // rows past the 9 Codex ones (newer sheets have more) are actions too
   const extra = sp ? Array.from({ length: Math.max(0, (pet.sheet.rows || 9) - 9) }, (_, k) => [9 + k, '✨', '动作' + (10 + k)]) : [];
-  const moves = sp
-    ? [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('dance', '🎵', '跳舞')]),
-       cat('✨', pet.ch.name, [...[...sp.actions, ...extra].map(([row, icon, label]) => leaf(`row:${pet.id}:${row}`, icon, label)),
-         leaf(`row:${pet.id}:any`, '🎲', '随便来一个'), act('sleep', '💤', '睡觉')])]
-    : [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('wave', '👋', '挥手'), act('dance', '🎵', '跳舞'), act('shy', '😊', '害羞'), act('rose', '🌹', '送花')]),
-       cat('💭', '动作', [act('think', '💭', '思考'), act('sleep', '💤', '睡觉'), act('noodle', '🍜', '吃面'), act('boba', '🧋', '奶茶')])];
+  const moves = [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('dance', '🎵', '跳舞')]),
+    cat('✨', pet.ch.name, [...[...sp.actions, ...extra].map(([row, icon, label]) => leaf(`row:${pet.id}:${row}`, icon, label)),
+      leaf(`row:${pet.id}:any`, '🎲', '随便来一个'), act('sleep', '💤', '睡觉')])];
   YB.radial.open({
     x: e.clientX, y: e.clientY,
     items: [
       cat('🔄', '角色', roles(), '点击：换成它 · 按住 Ctrl 或 Shift 点击：添加或移除（最多 4 只）'),
       ...moves,
-      PET.can('outfit') && cat('🕶️', '装扮', [leaf('outfit:glasses', '🕶️', '墨镜'), leaf('outfit:scarf', '🧣', '围巾')]),
-      cat('🍪', '投喂', [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出来')]),
+      cat('🍪', '投喂', [leaf('diary', '📒', '今日食谱'), leaf('undo', '↩️', '吐出上一餐')]),
       cat('🗑️', '回收站', [leaf('open_trash', '📂', '打开'), leaf('empty_trash', '🧹', '清空')]),
       cat('⚙️', '设置', [leaf('on_top', '📌', '置顶'), leaf('autoplay', '🧸', '自己玩'), leaf('autostart', '🚀', '开机自启'), leaf('explorer_menu', '🖱️', '文件菜单')]),
       leaf('toggle', '🙈', '隐藏'),
@@ -203,9 +217,31 @@ addEventListener('wheel', e => {
 
 // --- menu commands from Rust ---
 const sayAny = (text, ms = 4000) => { const b = visible()[0]; if (b) PET.say(b, text, { ms }); };
-const TOGGLES = { 'outfit:glasses': 'glasses', 'outfit:scarf': 'scarf', autoplay: 'autoplay', on_top: 'onTop', explorer_menu: 'explorerMenu' };
+async function downloadPack(id) {
+  const pack = CATALOG.find(c => c.id === id);
+  if (!pack) return;
+  sayAny('正在下载' + pack.name + '…', 15000);
+  try {
+    const members = await Promise.all(pack.dirs.map(async dir => {
+      const base = PACK_URL + [pack.name, dir].filter(Boolean).map(encodeURIComponent).join('/') + '/';
+      const read = async file => {
+        const res = await fetch(base + file);
+        if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
+        return Array.from(new Uint8Array(await res.arrayBuffer()));
+      };
+      const [manifest, sheet] = await Promise.all([read('pet.json'), read('spritesheet.webp')]);
+      return { manifest, sheet };
+    }));
+    await invoke('install_pet_pack', { id, members });
+    packs = await invoke('list_pets');
+    apply();
+    sayAny(pack.name + '已安装，在「角色」里选择～');
+  } catch (err) { sayAny('下载失败…\n' + err, 6000); }
+}
+const TOGGLES = { autoplay: 'autoplay', on_top: 'onTop', explorer_menu: 'explorerMenu' };
 function handleMenu(id, { add = false } = {}) { // add: Ctrl / Shift held (radial menu only)
   const [kind, arg] = id.split(':');
+  if (kind === 'download') return downloadPack(arg);
   if (kind === 'act') return PET.run(arg);
   if (kind === 'row') { const [, who, row] = id.split(':'); return PET.playRow(who, row === 'any' ? undefined : +row); }
   if (id === 'diary') return sayAny(PET.diary(visible().map(b => b.ch.name).join('和')), 6000);
@@ -230,25 +266,29 @@ listen('menu', ({ payload: id }) => handleMenu(id));
 listen('notice', e => sayAny(e.payload));
 listen('ask_empty', async ({ payload: n }) => {
   const b = visible()[0];
-  if (!b || await PET.say(b, `回收站里有 ${n} 个东西\n全部清空吗？清空后就找不回来了`, { choices: ['清空', '算了'] }) !== 0) return;
+  if (!b || await PET.say(b, `将永久清空整个系统回收站的 ${n} 个东西，\n包括其他应用删除的文件。无法找回，确定吗？`, { choices: ['永久清空', '算了'] }) !== 0) return;
   try { PET.say(b, `清空了 ${await invoke('empty_trash')} 个，肚子舒服了～`); }
   catch (err) { PET.say(b, '清空失败…\n' + err); }
 });
 
 // --- 文件投喂 ---
-// check → (confirm) → trash → chew + react; eaters are the bears already standing there with their mouths open
+// check → confirm large meals → recycle bin → eat or kick; animate only once the move succeeds
 async function feed(eaters, paths, from) {
-  const meal = await invoke('check_meal', { paths });
   const lead = eaters[0];
+  let meal;
+  try { meal = await invoke('check_meal', { paths }); }
+  catch (err) { PET.hungry(null); PET.say(lead, '检查文件失败…\n' + err); return false; }
   if (!meal.items.length) { PET.hungry(null); PET.say(lead, '这个不能吃…\n（系统文件或找不到）'); return false; }
   if (meal.needsConfirm) {
-    const what = `${meal.items.length} 个${meal.hasDirs ? '（含文件夹）' : ''}`;
-    if (await PET.say(lead, `要吃掉 ${what} 吗？\n会放进回收站`, { choices: ['吃！', '不吃'] }) !== 0) { PET.hungry(null); return false; }
+    const names = meal.items.slice(0, 3).map(it => it.path.split(/[\\/]/).pop()).join('、');
+    const more = meal.items.length > 3 ? ` 等 ${meal.items.length} 项` : '';
+    if (await PET.say(lead, `要把 ${names}${more}${meal.hasDirs ? '（含文件夹）' : ''}\n移入系统回收站吗？\n数量较多或体积较大，请仔细确认`, { choices: ['移入回收站', '取消'] }) !== 0) { PET.hungry(null); return false; }
   }
   // a folder is a big box: the partner comes to help carry it
   if (meal.hasDirs && eaters.length === 1) { const h = await PET.helper(lead); if (h) eaters = [lead, h]; }
   try {
-    await invoke('eat_files', { paths: meal.items.map(it => it.path) });
+    const moved = await invoke('eat_files', { paths: meal.items.map(it => it.path) });
+    if (!moved) throw new Error('文件已移动或无法放入回收站');
   } catch (err) {
     PET.hungry(null);
     PET.say(lead, '呜…没吃下去\n' + err);
@@ -259,7 +299,7 @@ async function feed(eaters, paths, from) {
   return true;
 }
 
-// drag files over a bear → huge mouth; drop → eaten
+// Drag files over a bear, then move them to the recycle bin on drop.
 const toCss = p => ({ x: p.x / devicePixelRatio, y: p.y / devicePixelRatio });
 let target = null;
 T.webview.getCurrentWebview().onDragDropEvent(({ payload: p }) => {
@@ -282,7 +322,8 @@ listen('errand', async ({ payload: { who, paths, target } }) => {
   if (!list.length) return;
   const spot = target ? { x: target[0], y: target[1] } : cursor;
   const goHome = await PET.errand(list, spot);
-  await feed(list, paths, spot);
+  if (!goHome) return;
+  if (!await feed(list, paths, spot)) list.forEach(b => YB.rt.setState(b, YB.rt.baseState()));
   goHome();
 });
 

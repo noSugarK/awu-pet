@@ -19,9 +19,9 @@
 
 <p align="center">一二、布布 Designed by <b>黄小B</b> · Powered by <b>noSugarK</b></p>
 
-Awu Pet（原名 YierBubu-Pet）是一款桌面宠物。它们站在任务栏上，眼睛跟着鼠标转，没人理时自己散步、玩耍，你离开电脑就趴下睡觉；把文件拖给它们，它们会张开大嘴“吃掉”——文件进系统回收站，随时可以找回。
+Awu Pet（原名 YierBubu-Pet）是一款桌面宠物。它们站在任务栏上，没人理时自己散步、玩耍，你离开电脑就打盹；把文件拖给它们，文件会移进系统回收站，宠物随机吃掉或踢走，之后仍可找回。
 
-默认是一二和布布（矢量画法）；也可以装上用动画帧画好的宠物包，**最多同时 4 只**同屏：一二布布、小白和小金毛、噜噜和噜妹、奶龙、奶蛙，或任意 [Petdex](https://petdex.dev) 宠物。
+默认是一二和布布两只（帧动画）；也可以按需下载或导入其他宠物包，**最多同时 4 只**同屏：小白和小金毛、噜噜和噜妹、奶龙、奶蛙，或任意 [Petdex](https://petdex.dev) 宠物。
 
 - **下载**：[GitHub Releases](https://github.com/noSugarK/awu-pet/releases)（Windows `.exe` / `.msi`、macOS `.dmg`、Linux `.AppImage` / `.deb`）
 - **互动网页**：[`docs/`](docs/index.html)，浏览器直接打开 `docs/index.html`，或部署到 GitHub Pages
@@ -32,8 +32,8 @@ Awu Pet（原名 YierBubu-Pet）是一款桌面宠物。它们站在任务栏上
 | | |
 |---|---|
 | 🐾 **像活的一样** | 按性格自己散步、玩耍、打盹；夜里犯困；两只会互相戳醒、追着玩、抱抱；你离开电脑就睡觉；全屏打游戏 / 看视频时躲到角落 |
-| 🍪 **文件投喂** | 把文件 / 文件夹拖到宠物身上，它张大嘴等着，松手吃掉（**只移进系统回收站**）；图片、音乐、视频、压缩包、文档……吃到不同东西反应不同；「今日食谱」统计吃了什么；「吐出来」撤销上一次 |
-| 🖱️ **资源管理器右键** | 「请小白删除」「请一二和布布删除」……宠物冲到那个文件旁边把它吃掉（Windows；Win11 在「显示更多选项」里），菜单项跟着当前显示的角色走 |
+| 🍪 **文件投喂** | 把文件 / 文件夹拖到宠物身上，小文件直接移进**系统回收站**，单项或合计达到 500 MiB、或超过 20 项时先确认；成功后随机吃掉或踢走；「今日食谱」记录操作，「吐出上一餐」可在重启后撤销最近一次投喂 |
+| 🖱️ **资源管理器右键** | 「请一二删除」「请一二和布布删除」……宠物冲到文件旁边帮忙移入回收站（Windows；Win11 在「显示更多选项」里），菜单项跟着当前显示的角色走 |
 | 🔄 **换角色** | 右键宠物 → 圆盘菜单「角色」：点击换成它，按住 Ctrl / Shift 点击添加或移除，最多 4 只 |
 | ✨ **每只有自己的动作** | 帧动画宠物的动作按它自己的画命名：小白会比心、撒花、打电话，噜噜会摸肚子、托腮，奶龙会偷笑、扭扭…… 双击宠物随机来一个，鼠标停在它身上它会害羞 |
 | 🖥️ **多显示器** | 窗口覆盖所有屏幕，宠物沿着各自所在屏幕的任务栏走，插拔显示器会自动适配 |
@@ -43,21 +43,20 @@ Awu Pet（原名 YierBubu-Pet）是一款桌面宠物。它们站在任务栏上
 
 ## 宠物包（帧动画）
 
-桌宠能读取 Codex / Petdex 格式的宠物包（`pet.json` + 8×9 格的精灵图）。**安装程序自带**一二布布、小白和小金毛、噜噜和噜妹、奶龙、奶蛙（在 [`desktop/src-tauri/pets`](desktop/src-tauri/pets)；来源：[littlegqqq/Yier-Bubu](https://github.com/littlegqqq/Yier-Bubu) 和 Petdex 用户作品，作者写进每个 `pet.json`），装好就能在「角色」里选，一二布布默认就是帧动画版。
+桌宠能读取 Codex / Petdex 格式的宠物包（`pet.json` + 精灵图）。安装程序只带一二和布布两只（帧动画版，在 [`desktop/src-tauri/pets`](desktop/src-tauri/pets)）。小白和小金毛、噜噜和噜妹、奶龙、奶蛙保存在仓库的 [`desktop/optional-pets`](desktop/optional-pets)，右键宠物 →「角色」可按需在线下载（下载使用仓库固定版本 `v0.5.1` 的同一份数据）。作者和来源写在各 `pet.json` 中。
 
 更新这些宠物包（走代理的网络加 `NODE_USE_ENV_PROXY=1`，Node 24+）：
 
 ```bash
-node desktop/scripts/install-pets.mjs                              # 装到自己电脑的宠物包文件夹，优先于自带的
-node desktop/scripts/install-pets.mjs --out desktop/src-tauri/pets # 更新安装程序自带的那份
+node desktop/scripts/install-pets.mjs # 装到自己电脑的宠物包文件夹
 ```
 
 还可以：
 
 - 用 `npx petdex install <名字>` 装任意 Petdex 宠物（装在 `~/.codex/pets`，桌宠会自动找到）；
-- 右键「角色 ▸ 宠物包文件夹」，把宠物包文件夹放进去（一个文件夹里放两个宠物包就是一组）。
+- 右键「角色 ▸ 导入本地宠物包」，把含 `pet.json` 和精灵图的文件夹放进打开的位置；一个文件夹里放两个宠物包就是一组。再次右键即可选择。
 
-帧动画只有 Codex 宠物的 9 行动作，吃面、奶茶、送花、墨镜 / 围巾这些菜单对它们会自动隐藏。
+宠物包的动作取决于精灵图与 `pet.json` 中的动作行；菜单只列当前角色有的动作。
 
 ## 开发
 
@@ -79,11 +78,12 @@ cd desktop && cargo tauri build
 
 | 目录 | 内容 |
 |---|---|
-| `docs/` | 网站 + 桌宠共用的前端（矢量渲染、帧动画、动作、自主行为、圆盘菜单） |
+| `docs/` | 网站 + 桌宠共用的前端（帧动画、动作、自主行为、圆盘菜单） |
 | `desktop/` | Rust + Tauri v2 桌宠：透明窗口、托盘、回收站、资源管理器菜单、宠物包、多显示器 |
 | `desktop/src-tauri/pets/` | 安装程序自带的宠物包 |
+| `desktop/optional-pets/` | 仓库中的按需下载宠物包，不打进安装程序 |
 | `desktop/scripts/install-pets.mjs` | 下载 / 更新宠物包 |
-| `design/` | 参考图、三视图、多角色方案 |
+| `design/` | 品牌素材 |
 | `video/` | Remotion 宣传视频（`cd video && npm i && npm run render`） |
 
 ### 发布新版本

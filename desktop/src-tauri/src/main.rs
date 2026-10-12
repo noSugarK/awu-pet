@@ -306,7 +306,10 @@ fn handle_menu(app: &AppHandle, id: &str) {
         "quit" => app.exit(0),
         "toggle" => toggle_window(app),
         "open_trash" => platform::open_trash(),
-        "open_pets" => pets::open_folder(app),
+        "open_pets" => {
+            pets::open_folder(app);
+            notice("把宠物包文件夹放进打开的位置，再右键桌宠选择角色～".into());
+        }
         "autostart" => {
             let launcher = app.autolaunch();
             let on = !launcher.is_enabled().unwrap_or(false);
@@ -322,6 +325,7 @@ fn handle_menu(app: &AppHandle, id: &str) {
             match feed::spit_out(&meal) {
                 Ok(n) => {
                     last.0.lock().unwrap().clear();
+                    feed::clear_last(app);
                     notice(format!("呸！吐出来了 {n} 个"));
                 }
                 Err(e) => notice(format!("吐不出来…\n{e}")),
@@ -421,11 +425,13 @@ fn main() {
             pet_ready,
             pets::list_pets,
             pets::read_pet_sheet,
+            pets::install_pet_pack,
             screen_areas
         ])
         .setup(|app| {
             let handle = app.handle().clone();
             migrate_autostart(&handle);
+            *app.state::<feed::LastMeal>().0.lock().unwrap() = feed::load_last(&handle);
             app.manage(build_menus(&handle)?);
             let win = app.get_webview_window("main").expect("main window");
             // cover the work area of the primary monitor (the bears walk along its bottom edge = the taskbar top)

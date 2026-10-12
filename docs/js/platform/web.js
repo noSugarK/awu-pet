@@ -1,10 +1,11 @@
 // Website shell (index.html): page buttons + the download menu.
 const { cast } = PET;
+PET.bears.forEach(b => PET.setSprite(b.id, b.ch.sprite.sheet));
 document.querySelector('h1').innerHTML = `${cast.members.map(id => YB.characters[id].name).join(' &amp; ')}<small>${cast.tagline || ''}</small>`;
 document.querySelector('.credit').textContent = `${cast.credit} · Powered by noSugarK · 形象版权归原作者所有，本站为非商业粉丝作品`;
-for (const id of ['think', 'dance', 'shy', 'sleep', 'noodle', 'boba', 'rose']) {
+for (const id of ['think', 'dance', 'shy', 'sleep']) {
   const btn = document.getElementById(id);
-  btn.hidden = !PET.can(id); // e.g. a lone character has nobody to dance with
+  btn.hidden = !PET.can(id); // unsupported sheet actions stay hidden
   btn.onclick = () => PET.run(id);
 }
 // 角色: one button per cast (only once there is more than one)
@@ -22,15 +23,6 @@ if (casts.length > 1) {
   }
   document.querySelector('footer').prepend(row);
 }
-for (const id of ['glasses', 'scarf']) {
-  const btn = document.getElementById(id);
-  btn.onclick = () => {
-    const on = btn.getAttribute('aria-pressed') !== 'true';
-    btn.setAttribute('aria-pressed', on);
-    PET.outfit(id, on);
-  };
-}
-
 // Download menu: every entry starts out pointing at the latest release page; once GitHub answers,
 // each one links straight to its installer in that release (asset names contain the version).
 (async () => {

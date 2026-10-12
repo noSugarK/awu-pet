@@ -1,12 +1,13 @@
 // Actions: everything a button, menu item or the brain can ask the bears to do.
 YB.actions = (() => {
-const { bears, byId, shown, other, rect, center, rand, sleep, baseState, setState, refresh, setPos, moveTo, burst, flyInto, jump, say, hush,
+const { bears, byId, shown, other, rect, center, rand, sleep, baseState, setState, refresh, setPos, moveTo, burst, flyInto, kickAway, jump, say, hush,
   interact, wake, activity } = YB.rt;
 
 function hug(b, o) {
   const ro = rect(o), side = center(b).x < center(o).x ? -1 : 1;
   setState(b, 'happy');
-  return moveTo(b, ro.left + side * ro.width * .68, ro.top, 360).then(() => {
+  return moveTo(b, ro.left + side * ro.width * .68, ro.top, 360).then(arrived => {
+    if (!arrived) { if (b.state === 'happy') setState(b, baseState()); return; }
     [b, o].forEach(x => setState(x, 'hug', 2600));
     const a = center(b), c = center(o);
     burst((a.x + c.x) / 2, Math.min(a.y, c.y) - 40, ['♥', '♡', '💕'], '#ff6b8a', 14, 1.6);
@@ -21,8 +22,6 @@ function wave(b) {
 const all = { // name → () => void | Promise
   think: () => shown().forEach(b => setState(b, 'think', 3500)),
   shy: () => shown().forEach(b => setState(b, 'shy', 3000)),
-  noodle: () => shown().forEach(b => setState(b, 'noodle', 4000)),
-  boba: () => shown().forEach(b => setState(b, 'boba', 4000)),
   wave: () => shown().forEach(wave),
   sleep: () => { activity.manualSleep = true; shown().forEach(b => setState(b, 'sleep')); },
   dance() {
@@ -31,34 +30,19 @@ const all = { // name → () => void | Promise
     if (s.length < 2) return all.wave();
     const [l, r] = s.sort((a, b) => a.x - b.x), w = rect(l).width;
     const mid = (center(l).x + center(r).x) / 2, y = (l.y + r.y) / 2;
-    return Promise.all([moveTo(l, mid - w * .9, y), moveTo(r, mid - w * .1, y)]).then(() => {
+    return Promise.all([moveTo(l, mid - w * .9, y), moveTo(r, mid - w * .1, y)]).then(arrived => {
+      if (!arrived.every(Boolean)) return;
       l.el.classList.add('hold-r'); l.el.classList.remove('hold-l');
       r.el.classList.add('hold-l'); r.el.classList.remove('hold-r');
       [l, r].forEach(b => setState(b, 'dance', 5000));
-    });
-  },
-  rose() {
-    // the giver (布布) runs over holding a rose, then the other one gets it
-    const giver = shown().find(b => b.ch.giver), recv = giver && other(giver);
-    if (!recv) return;
-    const r = rect(recv), side = center(giver).x < center(recv).x ? -1 : 1;
-    setState(giver, 'rose');
-    return moveTo(giver, r.left + side * r.width * .75, r.top, 320).then(() => {
-      setState(giver, 'happy', 2500);
-      setState(recv, 'rose', 3500);
-      jump(recv);
-      const c = center(recv);
-      burst(c.x, c.y - 40, ['♥', '♡', '💕'], '#ff6b8a', 12, 1.4);
     });
   },
   hug() { const [a, b] = shown(); if (b) return hug(a, b); },
 };
 // what an action needs from the cast on screen; anything not listed always works
 const duo = () => shown().length > 1;
-// sprite characters only have their sheet's animations: no held props, no outfits
-const flat = () => !shown().some(b => b.ch.sprite);
-const needs = { dance: duo, hug: duo, rose: () => duo() && flat() && shown().some(b => b.ch.giver), noodle: flat, boba: flat, outfit: flat };
-const can = name => !needs[name] || needs[name]();
+const needs = { dance: duo, hug: duo };
+const can = name => !!all[name] && (!needs[name] || needs[name]());
 function run(name) { interact(); wake(true); return all[name]?.(); }
 // a sprite pet's own action: play one row of its sheet for a while (no row: any of its actions)
 function playRow(id, row, ms = 3600) {
@@ -90,13 +74,10 @@ addEventListener('dblclick', e => {
   const w = rect(bears[0]).width, h = rect(bears[0]).height;
   shown().forEach((b, i) => {
     if (b.state === 'sleep') setState(b, 'normal');
-    moveTo(b, e.clientX - w * (i ? .1 : .9), e.clientY - h * .7, i ? 300 : 340).then(() => wave(b));
+    moveTo(b, e.clientX - w * (i ? .1 : .9), e.clientY - h * .7, i ? 300 : 340).then(arrived => { if (arrived) wave(b); });
   });
 });
 
-function outfit(id, on) {
-  bears.forEach(b => { b.el.classList.toggle('o-' + id, on); if (on && !b.hidden) { jump(b); setState(b, 'happy', 1200); } });
-}
 // show only some characters, e.g. show(['yier'])
 function show(ids) {
   bears.forEach(b => { b.hidden = !ids.includes(b.id); b.el.classList.toggle('hidden', b.hidden); });
@@ -109,7 +90,7 @@ function setSize(px) {
   bears.forEach((b, i) => { const r = rect(b); setPos(b, feet[i][0] - r.width / 2, feet[i][1] - r.height); });
 }
 
-// --- 文件投喂: gape while a file hovers, then chew and react to what it was ---
+// --- 文件投喂: show interest on hover, then celebrate a successful recycle ---
 function bearAt(x, y) {
   return shown().find(b => { const r = rect(b); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }) || null;
 }
@@ -119,26 +100,47 @@ function hungry(b) {
     else if (x.state === 'hungry') setState(x, baseState());
   });
 }
-// eaters: bears chewing together; items: [{path, isDir, bytes}] actually eaten; from: where the files came from
+// Celebrate only after Rust has moved the files to the recycle bin. Both entrances use this action.
 async function eat(eaters, items, from) {
   interact();
   const { kind, huge } = YB.feeding.classify(items), n = items.length, lead = eaters[0];
+  const mode = Math.random() < .5 ? 'eat' : 'kick';
   YB.feeding.record(items);
-  if (from) eaters.forEach(b => flyInto(b, from, [kind.emoji], Math.min(n, 6)));
-  const chew = kind.chew || 1600;
-  eaters.forEach(b => setState(b, 'eat', chew));
-  await sleep(chew);
-  eaters.forEach(b => { const c = center(b); burst(c.x, c.y - 30, ['✨'], '#f5b400', 3, .8); });
-  const what = huge ? '好撑……差点吃不下！' : kind.say;
-  const who = eaters.length > 1 ? `一起吃掉了 ${n} 个` : `吃掉了 ${n} 个`;
-  say(lead, `${what}\n${who} · 在回收站可以找回`, { ms: 3500 });
-  if (kind.after === 'dance') all.dance();
-  else if (kind.after === 'yawn') eaters.forEach(b => { setState(b, 'sleep', 2500); burst(center(b).x + 30, center(b).y - 60, ['💤'], '#4a7fd6', 1, .2); });
-  else if (kind.after === 'shiver') eaters.forEach(b => setState(b, 'surprised', 1500));
-  YB.emit('ate', { eaters, kind, n });
+  if (mode === 'eat') {
+    eaters.forEach(b => {
+      setState(b, 'hungry');
+      flyInto(b, from || center(b), [kind.emoji], Math.min(n, 4));
+    });
+    await sleep(480);
+    const chew = kind.chew || 1600;
+    eaters.forEach(b => setState(b, 'eat', chew));
+    await sleep(chew);
+    eaters.forEach(b => { const c = center(b); burst(c.x, c.y - 30, ['✨'], '#f5b400', 3, .8); });
+    const what = huge ? '好撑……差点吃不下！' : kind.say;
+    const who = eaters.length > 1 ? `一起吃掉了 ${n} 个` : `吃掉了 ${n} 个`;
+    say(lead, `${what}\n${who} · 在回收站可以找回`, { ms: 3500 });
+    if (kind.after === 'dance') all.dance();
+    else if (kind.after === 'yawn') eaters.forEach(b => { setState(b, 'sleep', 2500); burst(center(b).x + 30, center(b).y - 60, ['💤'], '#4a7fd6', 1, .2); });
+    else if (kind.after === 'shiver') eaters.forEach(b => setState(b, 'surprised', 1500));
+    YB.emit('ate', { eaters, kind, n });
+  } else {
+    eaters.forEach(b => {
+      const dir = from ? (center(b).x <= from.x ? 1 : -1) : (b.dir || 1);
+      b.el.classList.toggle('kick-left', dir < 0);
+      setState(b, 'kick', 1200);
+      kickAway(b, from, [kind.emoji], Math.min(n, 4), dir);
+      b.el.classList.remove('kick-strike');
+      void b.el.offsetWidth;
+      b.el.classList.add('kick-strike');
+    });
+    await sleep(1100);
+    eaters.forEach(b => b.el.classList.remove('kick-strike'));
+    say(lead, `${eaters.length > 1 ? '一起' : ''}踢走了 ${n} 个！⚽\n已进回收站，可以找回`, { ms: 3500 });
+  }
+  return mode;
 }
 
-// "请一二删除": ❗, dash to the file, stop beside it with the huge mouth open.
+// "请一二删除": dash to the file and wait for confirmation before choosing an action.
 // Resolves once they are in place, with a function that sends them back where they came from.
 async function errand(list, target) {
   interact();
@@ -156,14 +158,15 @@ async function errand(list, target) {
   await sleep(700);
   // one bear: stand on the side it comes from; two: one on each side of the file
   const sides = list.length > 1 ? [-1, 1] : [center(list[0]).x < target.x ? -1 : 1];
-  await Promise.all(list.map((b, i) => {
+  const arrived = await Promise.all(list.map((b, i) => {
     const r = rect(b);
     setState(b, 'happy');
     b.el.classList.add('dash');
     return moveTo(b, target.x - r.width / 2 + sides[i] * r.width * .6, target.y - r.height * .55, 620)
-      .then(() => b.el.classList.remove('dash'));
+      .then(arrived => { b.el.classList.remove('dash'); return arrived; });
   }));
-  list.forEach(b => setState(b, 'hungry'));
+  if (!arrived.every(Boolean)) { list.forEach(b => setState(b, 'normal')); return null; }
+  list.forEach(b => setState(b, 'think'));
   await sleep(650);
   return () => setTimeout(() => home.forEach(([b, x, y]) => moveTo(b, x, y, 200)), 3200);
 }
@@ -174,10 +177,10 @@ async function helper(b) {
   if (!o || !YB.rt.free(o)) return null;
   const r = rect(b), side = center(o).x < center(b).x ? -1 : 1;
   setState(o, 'happy');
-  await moveTo(o, r.left + side * r.width * .7, r.top, 520);
+  if (!await moveTo(o, r.left + side * r.width * .7, r.top, 520)) { setState(o, 'normal'); return null; }
   setState(o, 'hungry');
   return o;
 }
 
-return { all, can, run, playRow, hug, wave, outfit, show, setSize, bearAt, hungry, eat, errand, helper };
+return { all, can, run, playRow, hug, wave, show, setSize, bearAt, hungry, eat, errand, helper };
 })();

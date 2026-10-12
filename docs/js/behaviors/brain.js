@@ -11,10 +11,8 @@ const p = (b, trait) => b.ch.personality[trait];
 const SOLO = [
   { w: b => 4 * (.5 + p(b, 'playfulness')), go: b => { const a = config.walkArea(b), r = rect(b); return moveTo(b, rand(a.x0, a.x1 - r.width), rand(a.y0, Math.max(a.y0, a.y1 - r.height)), 150); } },
   { w: () => 1, go: b => setState(b, 'think', 3500) },
-  { w: b => b.ch.sprite ? 0 : p(b, 'playfulness'), go: b => setState(b, 'noodle', 4000) },
-  { w: b => b.ch.sprite ? 0 : p(b, 'playfulness'), go: b => setState(b, 'boba', 4000) },
   // a sprite pet plays one of its own actions (rows of its sheet)
-  { w: b => b.ch.sprite ? 2.5 : 0, go: b => { const list = b.ch.sprite.actions; setState(b, 'row' + list[Math.random() * list.length | 0][0], 3600); } },
+  { w: () => 2.5, go: b => { const list = b.ch.sprite.actions; setState(b, 'row' + list[Math.random() * list.length | 0][0], 3600); } },
   { w: b => p(b, 'social'), go: b => A.wave(b) },
   { w: b => p(b, 'playfulness'), go: b => { jump(b); setState(b, 'happy', 1200); } },
   // a nap; at night much more likely
@@ -24,7 +22,6 @@ const SOLO = [
 const DUO = [
   { w: (a, b) => 1.5 * p(a, 'social') * p(b, 'playfulness'), go: () => A.all.dance() },
   { w: (a, b) => 1.5 * p(a, 'social'), go: () => A.all.hug() },
-  { w: () => A.can('rose') ? .6 : 0, go: () => A.all.rose() },
   { w: () => .8, go: () => shown().forEach(b => setState(b, 'shy', 3000)) },
   { w: (a, b) => p(a, 'playfulness') * p(b, 'playfulness'), go: (a, b) => chase(a, b) },
 ];
@@ -43,7 +40,7 @@ async function chase(runner, chaser) {
     const run = moveTo(runner, x, y, 330);
     await sleep(300);
     moveTo(chaser, x + (Math.random() < .5 ? -1 : 1) * r.width * .7, y, 360);
-    await run;
+    if (!await run) { if (runner.state === 'happy') setState(runner, 'normal'); return; }
   }
   await sleep(500);
   jump(runner); jump(chaser);
@@ -53,7 +50,7 @@ async function chase(runner, chaser) {
 // the awake one goes over to wake up a napping partner
 async function poke(awake, sleeper) {
   const r = rect(sleeper), side = center(awake).x < center(sleeper).x ? -1 : 1;
-  await moveTo(awake, r.left + side * r.width * .7, r.top, 160);
+  if (!await moveTo(awake, r.left + side * r.width * .7, r.top, 160)) return;
   if (sleeper.state !== 'sleep') return;
   say(awake, awake.ch.lines.callPartner, { ms: 1500 });
   await sleep(1800);
@@ -104,7 +101,11 @@ YB.on('zoom', ({ x, y }) => {
   const r = rect(b);
   setState(b, 'happy');
   b.el.classList.add('dash');
-  moveTo(b, x - r.width / 2, y - r.height * .6, 520).then(() => { b.el.classList.remove('dash'); jump(b); setState(b, 'happy', 1000); });
+  moveTo(b, x - r.width / 2, y - r.height * .6, 520).then(arrived => {
+    b.el.classList.remove('dash');
+    if (arrived) { jump(b); setState(b, 'happy', 1000); }
+    else if (b.state === 'happy') setState(b, 'normal');
+  });
 });
 
 // one bear ate something alone while the other watched: "你又偷吃！" / "嘿嘿～"

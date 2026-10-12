@@ -13,6 +13,23 @@ use tauri::{AppHandle, Manager, State};
 #[derive(Default)]
 pub struct LastMeal(pub Mutex<Vec<PathBuf>>);
 
+fn last_meal_file(app: &AppHandle) -> Option<PathBuf> {
+    app.path().app_data_dir().ok().map(|dir| dir.join("last-meal.json"))
+}
+
+pub fn load_last(app: &AppHandle) -> Vec<PathBuf> {
+    last_meal_file(app)
+        .and_then(|path| std::fs::read(path).ok())
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or_default()
+}
+
+pub fn clear_last(app: &AppHandle) {
+    if let Some(path) = last_meal_file(app) {
+        let _ = std::fs::remove_file(path);
+    }
+}
+
 /// Directories and files a bear refuses to eat: drive roots, the home folder itself,
 /// OS / program folders and the app's own folder.
 fn protected() -> Vec<PathBuf> {
@@ -53,7 +70,7 @@ fn size_upto(path: &Path, limit: u64) -> u64 {
     total
 }
 
-const BIG_MEAL: u64 = 1 << 30;
+const BIG_MEAL: u64 = 500 * 1024 * 1024;
 
 /// One edible thing; the page picks the bears' reaction from its extension / folder-ness / size.
 #[derive(Serialize)]
@@ -79,8 +96,9 @@ pub fn check_meal(paths: Vec<PathBuf>) -> Meal {
     let (allowed, blocked): (Vec<_>, Vec<_>) = paths.into_iter().partition(|p| edible(p, &prot, home.as_deref()));
     let items: Vec<Item> = allowed.into_iter().map(|p| Item { is_dir: p.is_dir(), bytes: size_upto(&p, BIG_MEAL), path: p }).collect();
     let has_dirs = items.iter().any(|i| i.is_dir);
-    // very large items may not fit in the recycle bin, so ask first
-    let needs_confirm = items.len() > 20 || items.iter().map(|i| i.bytes).sum::<u64>() > BIG_MEAL;
+    // Ask for a large file/folder, a large total, or a batch with many items.
+    let needs_confirm = items.len() > 20 || items.iter().any(|i| i.bytes >= BIG_MEAL)
+        || items.iter().map(|i| i.bytes).sum::<u64>() >= BIG_MEAL;
     Meal { items, blocked, has_dirs, needs_confirm }
 }
 
@@ -95,6 +113,14 @@ pub fn eat_files(paths: Vec<PathBuf>, app: AppHandle, last: State<LastMeal>) -> 
     trash::delete_all(&food).map_err(|e| e.to_string())?;
     log_meal(&app, &food);
     *last.0.lock().unwrap() = food.clone();
+    if let Some(path) = last_meal_file(&app) {
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        if let Ok(bytes) = serde_json::to_vec(&food) {
+            if std::fs::write(&path, bytes).is_err() { clear_last(&app); }
+        }
+    }
     Ok(food.len())
 }
 
