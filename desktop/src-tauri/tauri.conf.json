@@ -44,7 +44,8 @@
     "category": "Entertainment",
     "resources": { "pets/": "pets/" },
     "windows": {
-      "nsis": { "installerHooks": "installer-hooks.nsh" }
+      "nsis": { "installerHooks": "installer-hooks.nsh" },
+      "wix": { "language": "zh-CN" }
     },
     "shortDescription": "Awu Pet · 嗷呜桌宠：住在任务栏上的桌宠，会陪你玩，还会帮你“嗷呜”一口吃掉文件。",
     "longDescription": "Awu Pet（嗷呜桌宠）是一款桌面宠物，默认角色是一二和布布，可以在右键菜单里切换角色。它们站在你的任务栏上，眼睛跟着鼠标转，没人理时自己散步、吃面、喝奶茶、跳舞、抱抱，你离开电脑就趴下睡觉。它们还是会吃文件的回收站：把文件拖到它们身上，或者在资源管理器里右键「请一二删除」，它们就会跑过去张开大嘴吃掉——文件进系统回收站，随时可以找回。一二、布布 Designed by 黄小B · Powered by noSugarK。形象版权归原作者所有，本软件为非商业粉丝作品。"
