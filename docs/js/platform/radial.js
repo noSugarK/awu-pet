@@ -17,18 +17,22 @@ function sector(r0, r1, a0, a1) {
 const angleOf = (dx, dy) => (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
 const near = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
 
-function open({ x, y, items, onPick, gesture = true }) {
+function open({ x, y, items, onPick, gesture = true, size = 380, bounds = [0, 0, innerWidth, innerHeight] }) {
   close();
+  const scale = size / 380;
   const step = 360 / items.length;
   const cats = items.map((it, i) => ({ ...it, a: i * step }));
-  const pad = R2 + 12; // keep the whole menu on screen
-  x = Math.min(Math.max(x, pad), innerWidth - pad);
-  y = Math.min(Math.max(y, pad), innerHeight - pad);
+  const pad = (R2 + 12) * scale; // keep the whole menu on screen
+  const [sx, sy, sw, sh] = bounds;
+  x = Math.min(Math.max(x, sx + pad), sx + sw - pad);
+  y = Math.min(Math.max(y, sy + pad), sy + sh - pad);
 
   const el = document.createElement('div');
   el.className = 'radial';
   el.style.left = x + 'px';
   el.style.top = y + 'px';
+  el.style.width = el.style.height = size + 'px';
+  el.style.margin = `-${size / 2}px 0 0 -${size / 2}px`;
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('viewBox', `${-R2 - 4} ${-R2 - 4} ${2 * R2 + 8} ${2 * R2 + 8}`);
   const hint = document.createElement('div');
@@ -51,7 +55,7 @@ function open({ x, y, items, onPick, gesture = true }) {
   const outer = node('g', { class: 'outer' });
   node('text', { x: 0, y: 5, class: 'hub-text' }).textContent = '✕';
 
-  menu = { el, x, y, cats, onPick, cat: null, kid: null, kids: [], moved: false, gesture };
+  menu = { el, x, y, scale, cats, onPick, cat: null, kid: null, kids: [], moved: false, gesture };
 
   function showKids(c) {
     outer.replaceChildren();
@@ -68,7 +72,7 @@ function open({ x, y, items, onPick, gesture = true }) {
   }
   // highlight what the pointer points at: categories in the inner ring, children beyond it
   menu.track = (px, py) => {
-    const dx = px - x, dy = py - y, d = Math.hypot(dx, dy), a = angleOf(dx, dy);
+    const dx = (px - x) / scale, dy = (py - y) / scale, d = Math.hypot(dx, dy), a = angleOf(dx, dy);
     if (d > 8) menu.moved = true;
     let cat = menu.cat, kid = null;
     if (d < R0) cat = null;
@@ -98,7 +102,7 @@ addEventListener('pointerup', e => {
   if (!menu) return;
   if (e.button === 2 && menu.gesture) { menu.gesture = false; if (menu.moved) menu.pick(e); return; }
   if (e.button !== 0) return;
-  if (Math.hypot(e.clientX - menu.x, e.clientY - menu.y) > R2 + 10) return close(); // clicked outside
+  if (Math.hypot(e.clientX - menu.x, e.clientY - menu.y) > (R2 + 10) * menu.scale) return close(); // clicked outside
   menu.track(e.clientX, e.clientY);
   if (!menu.pick(e) && !menu.cat) close();
 }, true);

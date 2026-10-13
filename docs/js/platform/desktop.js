@@ -202,8 +202,11 @@ addEventListener('pointerdown', async e => {
   const moves = [cat('🤗', '互动', [act('hug', '🤗', '抱抱'), act('dance', '🎵', '跳舞')]),
     cat('✨', pet.ch.name, [...[...sp.actions, ...extra].map(([row, icon, label]) => leaf(`row:${pet.id}:${row}`, icon, label)),
       leaf(`row:${pet.id}:any`, '🎲', '随便来一个'), act('sleep', '💤', '睡觉')])];
+  const bounds = screenAt(e.clientX, e.clientY);
   YB.radial.open({
     x: e.clientX, y: e.clientY,
+    bounds,
+    size: Math.min(320, Math.max(240, PET.rect(pet).width * 1.75), Math.min(bounds[2], bounds[3]) * .45),
     items: [
       cat('🔄', '角色', roles(), '点击：换成它 · 按住 Ctrl 或 Shift 点击：添加或移除（最多 4 只）'),
       ...moves,
