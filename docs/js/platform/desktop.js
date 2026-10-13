@@ -13,10 +13,10 @@ try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') |
 const save = () => { try { localStorage.setItem('settings', JSON.stringify(settings)); } catch {} };
 
 // bears live on the taskbars: the window spans every monitor and Rust says where each one's work area is
-// (x, y, w, h, primary first); a bear starts bottom-right of the primary one and wanders along the bottom edge of
+// (x, y, w, h, monitor scale, primary first); a bear starts bottom-right of the primary one and wanders along the bottom edge of
 // whichever monitor it is on; it is remembered where it was left
 const bearH = () => PET.rect(PET.bears[0]).height;
-let screens = [[0, 0, innerWidth, innerHeight]];
+let screens = [[0, 0, innerWidth, innerHeight, 1]];
 const screenAt = (x, y) => { // prefer the monitor under the pointer, even near an uneven screen boundary
   const gap = ([sx, sy, w, h]) => Math.hypot(Math.max(sx - x, 0, x - sx - w), Math.max(sy - y, 0, y - sy - h));
   return screens.find(([sx, sy, w, h]) => x >= sx && x < sx + w && y >= sy && y < sy + h)
@@ -27,6 +27,15 @@ const screenOf = b => {
   const r = PET.rect(b), x = r.left + r.width / 2, y = r.top + r.height / 2;
   return screenAt(x, y);
 };
+function resizePets() {
+  for (const b of PET.bears) {
+    const r = PET.rect(b), [,, w, h, dpi] = screenOf(b);
+    const size = Math.min(settings.size * dpi / devicePixelRatio, Math.min(w, h) * .22);
+    b.el.style.width = Math.round(size) + 'px';
+    const next = PET.rect(b);
+    YB.rt.setPos(b, r.left + (r.width - next.width) / 2, r.bottom - next.height);
+  }
+}
 Object.assign(PET.config, {
   sparkTrail: false,
   sleepAfter: 90000,
@@ -44,11 +53,18 @@ function onScreen(b, point) {
 function setScreens(list) {
   if (!list?.length) return;
   screens = list;
+  resizePets();
   PET.bears.forEach(b => onScreen(b));
 }
 invoke('screen_areas').then(setScreens);
 listen('screens', e => setScreens(e.payload));
-YB.on('dropped', async b => { const point = b.dropAt; b.dropAt = null; if (await onScreen(b, point) !== false) YB.rt.savePositions(); });
+YB.on('dropped', async b => {
+  const point = b.dropAt;
+  b.dropAt = null;
+  if (await onScreen(b, point) === false) return;
+  resizePets();
+  if (await onScreen(b, point) !== false) YB.rt.savePositions();
+});
 
 // 角色 menu (radial + tray): every character once — the built-in ones and the members of the pet packages found on
 // disk (Rust's list_pets) — ticked when on screen; picking one adds it or takes it away (see packs.js), up to MAX
@@ -102,7 +118,7 @@ function eaters() {
 }
 
 function apply() {
-  PET.setSize(settings.size);
+  resizePets();
   const ids = settings.show.filter(id => PET.cast.members.includes(id)); // saved while another cast was on
   PET.show(ids.length ? ids : PET.cast.members);
   PET.config.autoplay = settings.autoplay;
@@ -210,7 +226,7 @@ addEventListener('wheel', e => {
   if (!e.target.closest('.bear')) return;
   e.preventDefault();
   settings.size = Math.round(Math.min(360, Math.max(90, settings.size * (e.deltaY < 0 ? 1.08 : 1 / 1.08))));
-  PET.setSize(settings.size);
+  resizePets();
   clearTimeout(saveSoon);
   saveSoon = setTimeout(save, 400);
 }, { passive: false });

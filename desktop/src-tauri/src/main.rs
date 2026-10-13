@@ -39,23 +39,23 @@ struct Shared {
     hit_rects: Mutex<Vec<Rect>>,
     on_top: AtomicBool,           // the user's 置顶 setting
     fullscreen: AtomicBool,       // a fullscreen app is in front: step back behind it
-    screens: Mutex<Vec<[f64; 4]>>, // each monitor's work area in page px (x, y, w, h), the primary one first
+    screens: Mutex<Vec<[f64; 5]>>, // page work area (x, y, w, h) and monitor scale, primary first
 }
 
 // ---------- every monitor: the overlay spans them all, the page walks along each one's taskbar ----------
 
 /// Each monitor's work area (physical px: x, y, w, h), the primary one first.
-fn work_areas(win: &WebviewWindow) -> Vec<(i32, i32, u32, u32)> {
+fn work_areas(win: &WebviewWindow) -> Vec<(i32, i32, u32, u32, f64)> {
     let primary = win.primary_monitor().ok().flatten().map(|m| *m.position());
     let mut list: Vec<_> = win.available_monitors().unwrap_or_default().iter()
-        .map(|m| { let a = m.work_area(); (Some(*m.position()) != primary, (a.position.x, a.position.y, a.size.width, a.size.height)) })
+        .map(|m| { let a = m.work_area(); (Some(*m.position()) != primary, (a.position.x, a.position.y, a.size.width, a.size.height, m.scale_factor())) })
         .collect();
     list.sort_by_key(|(secondary, _)| *secondary);
     list.into_iter().map(|(_, a)| a).collect()
 }
 
 /// Covers the bounding box of all work areas and tells the page where each one is. Returns what it covered.
-fn cover_screens(win: &WebviewWindow, shared: &Shared) -> Vec<(i32, i32, u32, u32)> {
+fn cover_screens(win: &WebviewWindow, shared: &Shared) -> Vec<(i32, i32, u32, u32, f64)> {
     let areas = work_areas(win);
     if areas.is_empty() {
         return areas;
@@ -66,9 +66,9 @@ fn cover_screens(win: &WebviewWindow, shared: &Shared) -> Vec<(i32, i32, u32, u3
     let y1 = areas.iter().map(|a| a.1 + a.3 as i32).max().unwrap_or(0);
     let _ = win.set_position(tauri::PhysicalPosition::new(x0, y0));
     let _ = win.set_size(tauri::PhysicalSize::new((x1 - x0) as u32, (y1 - y0) as u32));
-    // ponytail: one scale factor for the whole window; monitors with different scaling get slightly off areas
+    // The window may switch DPI after moving onto another monitor; watch() recalculates these areas then.
     let scale = win.scale_factor().unwrap_or(1.0);
-    let page: Vec<[f64; 4]> = areas.iter().map(|a| [(a.0 - x0) as f64 / scale, (a.1 - y0) as f64 / scale, a.2 as f64 / scale, a.3 as f64 / scale]).collect();
+    let page: Vec<[f64; 5]> = areas.iter().map(|a| [(a.0 - x0) as f64 / scale, (a.1 - y0) as f64 / scale, a.2 as f64 / scale, a.3 as f64 / scale, a.4]).collect();
     *shared.screens.lock().unwrap() = page.clone();
     let _ = win.emit("screens", page);
     areas
@@ -76,7 +76,7 @@ fn cover_screens(win: &WebviewWindow, shared: &Shared) -> Vec<(i32, i32, u32, u3
 
 /// The work areas as the page last heard them (it asks once it has loaded).
 #[tauri::command]
-fn screen_areas(shared: State<Shared>) -> Vec<[f64; 4]> {
+fn screen_areas(shared: State<Shared>) -> Vec<[f64; 5]> {
     shared.screens.lock().unwrap().clone()
 }
 
@@ -109,12 +109,16 @@ fn watch(app: AppHandle, win: WebviewWindow) {
         let own = own_handle(&win);
         let mut fs_seen = 0; // consecutive fullscreen samples; one blip doesn't count
         let mut covered = work_areas(&win);
+        let mut window_scale = win.scale_factor().unwrap_or(1.0);
         for tick in 0u64.. {
             thread::sleep(Duration::from_millis(16));
             let shared = app.state::<Shared>();
-            // a monitor plugged in, removed or rearranged: cover the new layout
-            if tick % 120 == 0 && work_areas(&win) != covered {
+            // Moving the window can change DPI after the initial resize. Set its physical size again
+            // and resend CSS screen areas at the new scale so click-through hit tests line up.
+            let scale = win.scale_factor().unwrap_or(1.0);
+            if tick == 0 || scale != window_scale || (tick % 120 == 0 && work_areas(&win) != covered) {
                 covered = cover_screens(&win, &shared);
+                window_scale = scale;
             }
             if tick % 60 == 0 {
                 if let Ok(idle) = user_idle::UserIdle::get_time() {
@@ -434,7 +438,6 @@ fn main() {
             *app.state::<feed::LastMeal>().0.lock().unwrap() = feed::load_last(&handle);
             app.manage(build_menus(&handle)?);
             let win = app.get_webview_window("main").expect("main window");
-            // cover the work area of the primary monitor (the bears walk along its bottom edge = the taskbar top)
             // cover every monitor's work area (the bears walk along each one's bottom edge = its taskbar top)
             cover_screens(&win, &app.state::<Shared>());
             win.set_ignore_cursor_events(true)?;

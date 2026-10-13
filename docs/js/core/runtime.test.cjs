@@ -56,6 +56,27 @@ assert.match(sprite.sprite.style.backgroundPosition, /90\.909.*%$/);
   );
   onScreen({ x: 1850, y: 600 }, { x: 2000, y: 100 });
   assert.deepEqual(destination, [1920, 114]);
+  const sizedPet = { el: { style: {} } };
+  const sizeSetting = { size: 180 };
+  let bounds = { left: 100, top: 100, width: 180, height: 195, bottom: 295 };
+  const resize = vm.runInNewContext(
+    desktop.slice(desktop.indexOf('function resizePets()'), desktop.indexOf('Object.assign(PET.config')) + '\nresizePets',
+    { PET: { bears: [sizedPet], rect: () => bounds }, YB: { rt: { setPos: () => {} } },
+      screenOf: () => [0, 0, 768, 412, 1], settings: sizeSetting, devicePixelRatio: 2.5 },
+  );
+  resize();
+  assert.equal(sizedPet.el.style.width, '72px'); // 180 physical pixels on the 100% monitor
+  sizeSetting.size = 360;
+  resize();
+  assert.equal(sizedPet.el.style.width, '91px'); // capped on the smaller monitor
+  bounds = { left: 800, top: 100, width: 180, height: 195, bottom: 295 };
+  const resizeHighDpi = vm.runInNewContext(
+    desktop.slice(desktop.indexOf('function resizePets()'), desktop.indexOf('Object.assign(PET.config')) + '\nresizePets',
+    { PET: { bears: [sizedPet], rect: () => bounds }, YB: { rt: { setPos: () => {} } },
+      screenOf: () => [768, 0, 1536, 816, 2.5], settings: { size: 180 }, devicePixelRatio: 2.5 },
+  );
+  resizeHighDpi();
+  assert.equal(sizedPet.el.style.width, '180px');
   const calls = [];
   let choice = 1;
   let moved = 1;
