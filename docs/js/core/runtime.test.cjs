@@ -77,6 +77,11 @@ assert.match(sprite.sprite.style.backgroundPosition, /90\.909.*%$/);
   );
   resizeHighDpi();
   assert.equal(sizedPet.el.style.width, '180px');
+  const menuSize = vm.runInNewContext(
+    desktop.slice(desktop.indexOf('const menuSize ='), desktop.indexOf('function resizePets()')) + '\nmenuSize',
+  );
+  assert.equal(menuSize(72, [0, 0, 768, 412, 1]), 185.4);
+  assert.equal(menuSize(180, [768, 0, 1536, 816, 2.5]), 409.5);
   const calls = [];
   let choice = 1;
   let moved = 1;

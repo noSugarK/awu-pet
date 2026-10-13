@@ -27,6 +27,10 @@ const screenOf = b => {
   const r = PET.rect(b), x = r.left + r.width / 2, y = r.top + r.height / 2;
   return screenAt(x, y);
 };
+const menuSize = (petWidth, screen) => {
+  const boost = Math.min(1.3, Math.max(1, screen[4] / 1.8));
+  return Math.min(420, Math.max(240, petWidth * 1.75 * boost), Math.min(screen[2], screen[3]) * .45 * boost);
+};
 function resizePets() {
   for (const b of PET.bears) {
     const r = PET.rect(b), [,, w, h, dpi] = screenOf(b);
@@ -206,7 +210,7 @@ addEventListener('pointerdown', async e => {
   YB.radial.open({
     x: e.clientX, y: e.clientY,
     bounds,
-    size: Math.min(320, Math.max(240, PET.rect(pet).width * 1.75), Math.min(bounds[2], bounds[3]) * .45),
+    size: menuSize(PET.rect(pet).width, bounds),
     items: [
       cat('🔄', '角色', roles(), '点击：换成它 · 按住 Ctrl 或 Shift 点击：添加或移除（最多 4 只）'),
       ...moves,
