@@ -1,6 +1,6 @@
 [package]
 name = "awu-pet"
-version = "0.5.1"
+version = "0.5.2"
 description = "Awu Pet 嗷呜桌宠 · 一二、布布 Designed by 黄小B · Powered by noSugarK"
 authors = ["noSugarK"]
 license = "MIT"
